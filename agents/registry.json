@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "coordination_model": "multi-agent-claude-native",
+  "note": "Add your agents here. Each agent needs a profile, soul, and delegate script.",
+  "agents": [
+    {
+      "id": "example-agent",
+      "name": "Example Agent",
+      "model": "claude-opus-4-6",
+      "runtime": "Claude Code (Terminal)",
+      "invocation": "direct",
+      "workspace": "./agents/example-agent",
+      "task_inbox": "./agents/example-agent/tasks",
+      "protocol": "async-file + direct-session",
+      "role": "Replace with your agent's role",
+      "reports_to": ["luna"],
+      "capabilities": ["replace-with-real-capabilities"],
+      "status": "template"
+    }
+  ]
+}

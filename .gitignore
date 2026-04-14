@@ -1,0 +1,27 @@
+# Personal data — never commit these
+memory/episodic/session-*.md
+memory/dreams/dream-*.md
+memory/dreams/images/*
+memory/semantic/user_model.md
+memory/working/session_active.md
+data/cadence_log.json
+data/energy_log.json
+
+# Keep structure
+!memory/episodic/.gitkeep
+!memory/dreams/.gitkeep
+!memory/dreams/images/.gitkeep
+!memory/semantic/.gitkeep
+!memory/working/.gitkeep
+
+# OS
+.DS_Store
+desktop.ini
+Icon?
+*.swp
+
+# Node (if workspace projects)
+node_modules/
+dist/
+.env
+*.local
