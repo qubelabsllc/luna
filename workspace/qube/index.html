@@ -5,38 +5,18 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
 <style>
   :root {
-    --bg: #edeef0;
-    --face: #f8f9fb;
-    --ink: #121317;
-    --muted: #686d77;
-    --line: #d3d6dc;
+    color-scheme: light;
+    --bg: #ffffff;
+    --face: #ffffff;
+    --ink: #111216;
+    --muted: #6b6f78;
+    --line: #e4e6ea;
     --accent: #3a3df5;
     --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
     --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
     --gutter: clamp(16px, 5vw, 64px);
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #0d0e11;
-      --face: #17191e;
-      --ink: #eceef2;
-      --muted: #8d929b;
-      --line: #262930;
-      --accent: #7c80ff;
-    }
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #0d0e11;
-    --face: #17191e;
-    --ink: #eceef2;
-    --muted: #8d929b;
-    --line: #262930;
-    --accent: #7c80ff;
-  }
-
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -273,8 +253,6 @@
     };
   };
   readColors();
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readColors);
-  new MutationObserver(readColors).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
   const rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
