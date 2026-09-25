@@ -233,7 +233,7 @@
     <section class="step" id="step-code" hidden>
       <div class="mono">Step 2 of 3</div>
       <h1>Check your email.</h1>
-      <p class="lead">We sent a 6-digit code to <b id="code-email"></b>. It expires in an hour.</p>
+      <p class="lead"><span id="code-pre">We sent a 6-digit code to </span><b id="code-email"></b><span id="code-post">. It expires in an hour.</span></p>
       <form id="form-code" novalidate>
         <label class="mono" for="code">Code</label>
         <div class="field"><input class="code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······" required></div>
@@ -320,6 +320,11 @@
   }
 
   function previewApi() {
+    const invite = cfg.preview || {};
+    const sha256 = async (text) => {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+    };
     const KEY = "qube-preview-wallet";
     const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
     let s = load();
@@ -329,8 +334,20 @@
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     return {
       async hasSession() { return Boolean(s.email); },
-      async sendCode(email) { await wait(500); s.pending = email; },
-      async verify(email, token) { await wait(400); if (!/^\d{6}$/.test(token)) throw new Error("That code isn't right. Check the email and try again."); s.email = email; save(); },
+      async sendCode(email) {
+        await wait(500);
+        if ((await sha256(email.trim().toLowerCase())) !== invite.emailSha256) {
+          throw new Error("QÜBE is invite-only for now. Public signups open soon.");
+        }
+      },
+      async verify(email, token) {
+        await wait(400);
+        if ((await sha256(token)) !== invite.codeSha256) throw new Error("That code isn't right.");
+        // The invite account is pre-made: it skips the handle step.
+        s.email = email;
+        if (!s.handle) { s.handle = invite.handle; s.joined = new Date().toISOString(); s.ledger = []; }
+        save();
+      },
       async wallet() {
         if (!s.handle) return null;
         const bal = (s.ledger || []).reduce((a, r) => a + r.amount, 0);
@@ -354,7 +371,7 @@
         return { amount, balance: s.ledger.reduce((a, r) => a + r.amount, 0) };
       },
       async activity() { return s.ledger || []; },
-      async signOut() { s = {}; save(); },
+      async signOut() { delete s.email; save(); },
     };
   }
 
@@ -387,9 +404,10 @@
     try {
       await api.sendCode(v);
       email = v;
+      hint("email-hint", "");
       $("code-email").textContent = v;
       $("code").value = "";
-      hint("code-hint", live ? "" : "Preview mode: any 6 digits work.");
+      hint("code-hint", live ? "" : "Enter your access code.");
       startResendCooldown();
       show("code");
     } catch (err) {
@@ -662,6 +680,10 @@
 
   // ------------------------------------------------------------------ boot
   $("preview-pill").hidden = live;
+  if (!live) {
+    $("code-pre").textContent = "Enter the 6-digit access code for ";
+    $("code-post").textContent = ".";
+  }
   route().catch((err) => {
     show("email");
     hint("email-hint", err.message, "error");

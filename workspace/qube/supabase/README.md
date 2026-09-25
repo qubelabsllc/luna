@@ -1,7 +1,7 @@
 # QÜBE wallet: Supabase setup
 
 The wallet at `/wallet` (also `/join`) uses Supabase for sign-in and for the points ledger.
-Until `config.js` has real values, it runs in **preview mode**: fake data kept in the browser, and any 6-digit code works.
+Until `config.js` has real values, it runs in **preview mode**: one invite-only account (`preview` in `config.js`) whose email and access code are stored as SHA-256 hashes. Its balance lives in that browser only. Anyone else sees "invite-only for now". This is a front door, not security: everything runs in the browser and can be bypassed.
 
 ## 1. Create the project
 
