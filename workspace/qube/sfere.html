@@ -7,6 +7,7 @@
 <meta name="description" content="The Sfere: a digital globe for agents, cut into 1,970,466 Squares of 10 × 10 miles.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="/qube.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
@@ -107,7 +108,8 @@
 
   @media (max-width: 720px) {
     .title p, .help { display: none; }
-    .scale { top: auto; bottom: auto; right: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px)); }
+    .title, .scale { top: calc(72px + env(safe-area-inset-top, 0px)); }
+    .card { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     .scale b { font-size: 20px; }
     .title h1 { font-size: 32px; }
   }
@@ -115,14 +117,6 @@
 </head>
 <body>
 <canvas id="globe" aria-label="The Sfere, a 3D globe divided into 10 by 10 mile Squares. Drag to turn, scroll or pinch to zoom, click a Square to select it."></canvas>
-
-<nav class="top">
-  <a class="mark" href="/" aria-label="QÜBE home">Q<span class="u">U</span>BE</a>
-  <div class="nav-right mono">
-    <span class="pill" id="preview-pill" hidden>Preview</span>
-    <a href="/wallet">Wallet</a>
-  </div>
-</nav>
 
 <div class="title">
   <div class="mono">The Sfere</div>
@@ -162,7 +156,7 @@
   const fmt = new Intl.NumberFormat("en-US");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const DEG = Math.PI / 180;
-  $("preview-pill").hidden = live;
+  QUBE.nav("sfere", { overlay: true });
   $("total").textContent = fmt.format(grid.TOTAL);
 
   if (!window.THREE) {
@@ -594,7 +588,7 @@
         eyebrow: "Invite only",
         title: "Own a piece of the Sfere",
         sub: "Every member gets one free Square. Invite people to earn more.",
-        buttons: [button("Sign in", null, false, "/wallet"), button("Join with an invite", null, true, "/join")],
+        buttons: [button("Sign in", null, false, "/points"), button("Join with an invite", null, true, "/join")],
       });
     }
     const avail = Number(me.squares_available);
@@ -612,7 +606,7 @@
       sub: mine.length ? `${grid.coords(mine[0].row, mine[0].col)} · 100 sq mi` : "",
       status: mine.length ? `You own ${mine.length} Square${mine.length === 1 ? "" : "s"}` : "",
       dot: "mine",
-      buttons: mine.length ? [button("Fly to my Square", () => focusSquare(mine[0])), button("Invite for more", null, true, "/wallet")] : [],
+      buttons: mine.length ? [button("Fly to my Square", () => focusSquare(mine[0])), button("Invite for more", null, true, "/points")] : [],
     });
   }
 
@@ -630,10 +624,10 @@
       return setCard({ ...base, status: "Owned by @" + owner.handle, dot: "taken", buttons: [close] });
     }
     if (!me) {
-      return setCard({ ...base, status: "Open", dot: "open", buttons: [button("Sign in to claim", null, false, "/wallet"), close] });
+      return setCard({ ...base, status: "Open", dot: "open", buttons: [button("Sign in to claim", null, false, "/points"), close] });
     }
     if (Number(me.squares_available) <= 0) {
-      return setCard({ ...base, status: "Open · you have no Squares to place", dot: "open", buttons: [button("Invite to earn one", null, false, "/wallet"), close] });
+      return setCard({ ...base, status: "Open · you have no Squares to place", dot: "open", buttons: [button("Invite to earn one", null, false, "/points"), close] });
     }
     setCard({ ...base, status: "Open", dot: "open", buttons: [button("Claim this Square", () => confirmClaim(row, col)), close] });
   }

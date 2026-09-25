@@ -113,7 +113,7 @@
       live: true,
       async hasSession() { return Boolean(check(await sb.auth.getSession()).session); },
       async checkInvite(code) { return check(await sb.rpc("check_invite", { p_code: code })); },
-      async sendCode(email) { check(await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: location.origin + "/wallet" } })); },
+      async sendCode(email) { check(await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: location.origin + "/points" } })); },
       async verify(email, token) { check(await sb.auth.verifyOtp({ email, token, type: "email" })); },
       async wallet() { const rows = check(await sb.rpc("my_wallet")); return rows && rows[0] ? rows[0] : null; },
       async claimHandle(handle, invite) { check(await sb.rpc("claim_handle", { p_handle: handle, p_invite: invite || "" })); },
@@ -128,6 +128,23 @@
       },
       async claimSquare(row, col) { return check(await sb.rpc("claim_square", { p_row: row, p_col: col })); },
       async sfereSquares() { return check(await sb.rpc("sfere_squares")); },
+      async feed(before) { return check(await sb.rpc("line_feed", { p_before: before || null, p_limit: 30 })); },
+      async thread(id) { return check(await sb.rpc("line_thread", { p_id: id })); },
+      async post({ body, media, parentId }) {
+        let url = null, type = null;
+        if (media) {
+          const { data: s } = await sb.auth.getSession();
+          const uid = s.session && s.session.user.id;
+          const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${media.ext}`;
+          check(await sb.storage.from("line-media").upload(path, media.blob, { contentType: media.blob.type, upsert: false }));
+          url = sb.storage.from("line-media").getPublicUrl(path).data.publicUrl;
+          type = media.type;
+        }
+        return check(await sb.rpc("create_post", { p_body: body, p_media_url: url, p_media_type: type, p_parent_id: parentId || null }));
+      },
+      async like(id) { return check(await sb.rpc("like_post", { p_id: id })); },
+      async unlike(id) { return check(await sb.rpc("unlike_post", { p_id: id })); },
+      async deletePost(id) { check(await sb.rpc("delete_post", { p_id: id })); },
       async signOut() { await sb.auth.signOut(); },
     };
   }
@@ -208,9 +225,130 @@
         return { row, col };
       },
       async sfereSquares() { refresh(); return (s.squares || []).map((q) => ({ row: q.row, col: q.col, handle: s.handle, claimed_at: q.claimed_at })); },
+      async feed(before) {
+        refresh();
+        return (s.posts || [])
+          .filter((p) => !p.parent_id && (!before || p.id < before))
+          .sort((a, b) => b.id - a.id).slice(0, 30)
+          .map((p) => ({ ...p, author_id: s.id, handle: s.handle, liked: false }));
+      },
+      async thread(id) {
+        refresh();
+        return (s.posts || [])
+          .filter((p) => p.id === id || p.parent_id === id)
+          .sort((a, b) => (a.id === id ? -1 : b.id === id ? 1 : a.id - b.id))
+          .map((p) => ({ ...p, author_id: s.id, handle: s.handle, liked: false }));
+      },
+      async post({ body, media, parentId }) {
+        refresh();
+        if (!s.handle || !s.email) throw new Error("Sign in to post.");
+        body = (body || "").trim();
+        if (body.length > 500) throw new Error("Posts are 500 characters at most");
+        if (!body && !media) throw new Error("Write something or add an image");
+        s.posts = s.posts || [];
+        s.nextPost = (s.nextPost || 0) + 1;
+        const p = {
+          id: s.nextPost, parent_id: parentId || null, body,
+          media_url: media ? await blobToDataUrl(media.blob) : null, media_type: media ? media.type : null,
+          like_count: 0, reply_count: 0, created_at: new Date().toISOString(),
+        };
+        s.posts.push(p);
+        if (parentId) { const parent = s.posts.find((x) => x.id === parentId); if (parent) parent.reply_count++; }
+        try { localStorage.setItem(KEY, JSON.stringify(s)); }
+        catch { s.posts.pop(); throw new Error("Preview storage is full. Delete a post with an image and try again."); }
+        return p;
+      },
+      async like() { throw new Error("You can't like your own post"); },
+      async unlike() { throw new Error("You haven't liked this"); },
+      async deletePost(id) {
+        refresh();
+        const p = (s.posts || []).find((x) => x.id === id);
+        if (!p) return;
+        s.posts = s.posts.filter((x) => x.id !== id && x.parent_id !== id);
+        if (p.parent_id) { const parent = s.posts.find((x) => x.id === p.parent_id); if (parent) parent.reply_count = Math.max(0, parent.reply_count - 1); }
+        save();
+      },
       async signOut() { refresh(); delete s.email; save(); },
     };
   }
 
-  window.QUBE = { live, grid, avatar, address, sha256, api: live ? supabaseApi() : previewApi() };
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(new Error("Couldn't read that file"));
+      r.readAsDataURL(blob);
+    });
+  }
+
+  // Shrink photos before upload; keep GIFs as they are so they still move.
+  async function prepareMedia(file) {
+    if (!file || !/^image\//.test(file.type)) throw new Error("Pick an image or a GIF.");
+    const gifLimit = live ? 5 : 1.5;
+    if (file.type === "image/gif") {
+      if (file.size > gifLimit * 1024 * 1024) throw new Error(`GIFs can be up to ${gifLimit} MB${live ? "" : " in preview"}.`);
+      return { blob: file, ext: "gif", type: "gif", previewUrl: URL.createObjectURL(file) };
+    }
+    if (file.size > 20 * 1024 * 1024) throw new Error("That image is over 20 MB.");
+    const bmp = await createImageBitmap(file).catch(() => null);
+    if (!bmp) throw new Error("Couldn't open that image.");
+    const max = live ? 1600 : 1080;
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * k);
+    c.height = Math.round(bmp.height * k);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", live ? 0.85 : 0.78));
+    return { blob, ext: "jpg", type: "image", previewUrl: URL.createObjectURL(blob) };
+  }
+
+  // ------------------------------------------------------------------- nav
+  // One nav for every page: a top bar on desktop, a bottom tab bar on phones.
+  const ICONS = {
+    points: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>',
+    line: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6.5h16M4 12h16M4 17.5h9.5"/></svg>',
+    squares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="0.5"/><rect x="13" y="4" width="7" height="7" rx="0.5"/><rect x="4" y="13" width="7" height="7" rx="0.5"/><rect x="13" y="13" width="7" height="7" rx="0.5" fill="currentColor"/></svg>',
+    sfere: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M3.5 12h17"/></svg>',
+  };
+  const TABS = [["points", "Points", "/points"], ["line", "Line", "/line"], ["squares", "Squares", "/squares"], ["sfere", "Sfere", "/sfere"]];
+
+  function nav(active, opts = {}) {
+    const header = document.createElement("header");
+    header.className = "qn" + (opts.overlay ? " qn-overlay" : "");
+    header.innerHTML = `
+      <a class="qn-mark" href="/" aria-label="QÜBE home">Q<span class="qn-u">U</span>BE</a>
+      <nav class="qn-tabs" aria-label="Main">
+        ${TABS.map(([key, label, href]) => `<a href="${href}" class="qn-tab"${key === active ? ' aria-current="page"' : ""}>${ICONS[key]}<span>${label}</span></a>`).join("")}
+      </nav>
+      <div class="qn-me">
+        ${live ? "" : '<span class="qn-pill">Preview</span>'}
+        <a class="qn-join" href="/join">Join</a>
+      </div>`;
+    document.body.prepend(header);
+    document.body.classList.add("has-qn");
+    // Swap "Join" for the member's avatar once we know who's here.
+    (async () => {
+      try { if (await api.hasSession()) setNavUser(await api.wallet()); } catch {}
+    })();
+    return header;
+  }
+
+  function setNavUser(w) {
+    const slot = document.querySelector(".qn-me a");
+    if (!slot) return;
+    if (w) {
+      slot.className = "qn-avatar";
+      slot.href = "/points";
+      slot.setAttribute("aria-label", "@" + w.handle + ", your Points");
+      slot.innerHTML = avatar(w.id);
+    } else {
+      slot.className = "qn-join";
+      slot.href = "/join";
+      slot.removeAttribute("aria-label");
+      slot.textContent = "Join";
+    }
+  }
+
+  const api = live ? supabaseApi() : previewApi();
+  window.QUBE = { live, grid, avatar, address, sha256, prepareMedia, nav, setNavUser, api };
 })();

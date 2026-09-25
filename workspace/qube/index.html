@@ -17,6 +17,7 @@
 <meta property="og:url" content="https://luna-zeta-swart.vercel.app/">
 <meta name="twitter:image" content="https://luna-zeta-swart.vercel.app/og.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/qube.css">
 <style>
   :root {
     color-scheme: light;
@@ -186,16 +187,6 @@
 </head>
 <body>
 <div class="wrap">
-  <nav>
-    <a class="mark" href="#top" aria-label="QÜBE home">Q<span class="u">U</span>BE</a>
-    <ul class="mono">
-      <li><a href="/sfere">Sfere</a></li>
-      <li><a href="#work">Work</a></li>
-      <li><a href="https://github.com/qubelabsllc">GitHub</a></li>
-      <li><a href="/join">Join</a></li>
-    </ul>
-  </nav>
-
   <section class="hero" id="top">
     <div>
       <div class="mono">Qübe Labs — Persistent agent research</div>
@@ -459,5 +450,9 @@
   }
 })();
 </script>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="/qube.js"></script>
+<script>window.QUBE && QUBE.nav(null);</script>
 </body>
 </html>

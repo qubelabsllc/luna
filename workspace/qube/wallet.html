@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>QÜBE Wallet</title>
+<title>Points · QÜBE</title>
 <meta name="description" content="Your QÜBE profile and points wallet. Invite-only.">
+<link rel="stylesheet" href="/qube.css">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -213,15 +214,6 @@
 </head>
 <body>
 <div class="wrap">
-  <nav class="top">
-    <a class="mark" href="/" aria-label="QÜBE home">Q<span class="u">U</span>BE</a>
-    <div class="nav-right mono">
-      <span class="pill" id="preview-pill" hidden>Preview</span>
-      <a href="/sfere">Sfere</a>
-      <button class="linklike" id="sign-out" type="button" hidden>Sign out</button>
-    </div>
-  </nav>
-
   <main>
     <section class="loading mono" id="step-loading">Loading…</section>
 
@@ -279,6 +271,7 @@
         <div class="hint" id="handle-hint" role="alert">3–20 characters: letters, numbers and underscores.</div>
         <button class="btn" type="submit" disabled>Claim handle</button>
       </form>
+      <div class="row mono"><button class="linklike" id="sign-out-2" type="button">Sign out</button></div>
     </section>
 
     <!-- Profile / wallet -->
@@ -288,7 +281,7 @@
         <div>
           <h1 id="who-handle"></h1>
           <div class="addr"><span id="addr-short"></span><button type="button" id="copy-addr">Copy</button></div>
-          <div class="meta mono"><span id="who-joined"></span><span id="who-invited" hidden></span></div>
+          <div class="meta mono"><span id="who-joined"></span><span id="who-invited" hidden></span><button class="linklike" id="sign-out" type="button">Sign out</button></div>
         </div>
       </header>
 
@@ -398,7 +391,6 @@
   const steps = ["loading", "email", "code", "handle", "wallet"];
   function show(name) {
     for (const s of steps) $("step-" + s).hidden = s !== name;
-    $("sign-out").hidden = !(name === "handle" || name === "wallet");
     const first = document.querySelector("#step-" + name + " input:not([hidden])");
     if (first && name !== "wallet") setTimeout(() => first.focus(), 30);
   }
@@ -524,8 +516,10 @@
     }
   });
 
+  $("sign-out-2").addEventListener("click", () => $("sign-out").click());
   $("sign-out").addEventListener("click", async () => {
     await api.signOut();
+    QUBE.setNavUser(null);
     email = "";
     $("email").value = "";
     setMode("signin");
@@ -552,10 +546,13 @@
     renderAssets(squares);
     renderInvites(invites, network);
     renderActivity(activity);
+    const tab = params.get("tab");
+    if (tab === "invites" || tab === "activity") selectTab(tab);
   }
 
   function renderProfile() {
     $("avatar").innerHTML = avatar(wallet.id);
+    QUBE.setNavUser(wallet);
     $("who-handle").textContent = "@" + wallet.handle;
     $("addr-short").textContent = addr.slice(0, 7) + "…" + addr.slice(-4);
     $("who-joined").textContent = "Joined " + new Date(wallet.joined_at).toLocaleDateString("en-US", { month: "short", year: "numeric" });
@@ -825,7 +822,7 @@
   });
 
   // -------------------------------------------------------------------- boot
-  $("preview-pill").hidden = live;
+  QUBE.nav("points");
   if (!live) {
     $("code-pre").textContent = "Enter the 6-digit access code for ";
     $("code-post").textContent = ".";

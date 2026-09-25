@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Line · QÜBE</title>
+<meta name="description" content="The Line: posts from QÜBE members. Every like a post gets earns its author 1 point.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/qube.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --ink: #111216;
+    --muted: #6b6f78;
+    --faint: #f5f6f8;
+    --line: #e4e6ea;
+    --accent: #3a3df5;
+    --like: #e0584a;
+    --danger: #c2261d;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 5vw, 64px);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+  button { font: inherit; color: inherit; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  main { max-width: 640px; margin: 0 auto; padding: 8px var(--gutter) 96px; }
+  .head { display: flex; justify-content: space-between; align-items: end; gap: 16px; padding-block: 16px 20px; border-bottom: 1px solid var(--ink); }
+  .head h1 { margin: 8px 0 0; font: 200 clamp(36px, 6vw, 52px)/1 var(--display); }
+  .head p { margin: 0; max-width: 26ch; text-align: right; font-size: 14px; color: var(--muted); }
+  .head p b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- composer */
+  .composer { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; padding-block: 20px; border-bottom: 1px solid var(--line); }
+  .av { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: block; flex: none; background: var(--faint); }
+  .av svg { display: block; width: 100%; height: 100%; }
+  .composer .who { font-weight: 600; font-size: 15px; }
+  .composer textarea {
+    display: block; width: 100%; border: 0; outline: 0; resize: none; padding: 2px 0 0; margin: 0;
+    font: 400 16px/1.5 var(--body); color: var(--ink); background: transparent; min-height: 28px; max-height: 360px;
+  }
+  .composer textarea::placeholder { color: #a3a7af; }
+  .attach-preview { position: relative; margin-top: 10px; display: inline-block; max-width: 100%; }
+  .attach-preview img { display: block; max-width: 100%; max-height: 320px; border-radius: 10px; box-shadow: 0 0 0 1px var(--line); }
+  .attach-preview button {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer;
+    background: rgba(17, 18, 22, 0.72); color: #fff; font-size: 16px; line-height: 1;
+  }
+  .c-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; cursor: pointer; display: grid; place-items: center; color: var(--muted); }
+  .icon-btn:hover { background: var(--faint); color: var(--ink); }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .count { font: 400 12px/1 var(--mono); color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .count.over { color: var(--danger); }
+  .btn {
+    border: 0; border-radius: 999px; background: var(--ink); color: #fff; padding: 10px 18px; cursor: pointer;
+    font: 500 14px/1 var(--body); transition: background 0.2s; text-decoration: none; display: inline-block;
+  }
+  .btn:hover:not(:disabled) { background: var(--accent); }
+  .btn:disabled { opacity: 0.3; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .c-err { color: var(--danger); font-size: 14px; margin-top: 8px; }
+  .c-err:empty { display: none; }
+
+  .guest { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 20px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+  .guest div { display: flex; gap: 8px; }
+
+  /* ---------- posts */
+  .feed { list-style: none; margin: 0; padding: 0; }
+  .post { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; padding-block: 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .post.big { cursor: default; padding-block: 22px; }
+  .post.reply { padding-left: 0; }
+  .p-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .p-head b { font-weight: 600; font-size: 15px; }
+  .p-head time { font: 400 12px/1 var(--mono); color: var(--muted); letter-spacing: 0.02em; }
+  .p-menu { margin-left: auto; position: relative; }
+  .p-menu > button { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; font-size: 18px; line-height: 1; }
+  .p-menu > button:hover { color: var(--ink); }
+  .p-menu .del { position: absolute; right: 0; top: 24px; white-space: nowrap; z-index: 2; border: 0; cursor: pointer; background: var(--bg); color: var(--danger); box-shadow: 0 8px 30px rgba(17,18,22,0.14), 0 0 0 1px var(--line); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+  .p-text { margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15.5px; }
+  .post.big .p-text { font-size: 18px; }
+  .p-text a { color: var(--accent); text-decoration: none; }
+  .p-text a:hover { text-decoration: underline; }
+  .p-media { display: block; margin-top: 10px; max-width: 100%; max-height: 520px; border-radius: 12px; box-shadow: 0 0 0 1px var(--line); background: var(--faint); }
+  .p-tag { display: inline-block; margin-top: 8px; font: 400 10px/1 var(--mono); letter-spacing: 0.1em; color: var(--muted); }
+  .p-act { display: flex; align-items: center; gap: 18px; margin-top: 10px; margin-left: -8px; }
+  .act { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; cursor: pointer; color: var(--muted); padding: 6px 8px; border-radius: 999px; font: 400 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
+  .act svg { width: 19px; height: 19px; }
+  .act:hover:not(:disabled) { color: var(--ink); background: var(--faint); }
+  .act.liked { color: var(--like); }
+  .act.liked svg path { fill: currentColor; }
+  .act:disabled { cursor: default; }
+  .act.pop svg { animation: pop 0.35s ease; }
+  @keyframes pop { 40% { transform: scale(1.3); } }
+  .earned { font: 400 12px/1 var(--mono); color: var(--accent); }
+
+  .more { display: flex; justify-content: center; padding-top: 24px; }
+  .empty { padding-block: 48px; text-align: center; color: var(--muted); }
+  .back { display: inline-flex; align-items: center; gap: 8px; padding-block: 18px 6px; border: 0; background: none; cursor: pointer; font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .back:hover { color: var(--ink); }
+  .replies-label { padding-block: 18px 0; }
+
+  .toast {
+    position: fixed; z-index: 40; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  @media (max-width: 760px) {
+    .toast { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+    .head p { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .act.pop svg { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <section id="view-feed">
+    <header class="head">
+      <div>
+        <div class="mono">QÜBE feed</div>
+        <h1>Line</h1>
+      </div>
+      <p>Every like your post gets earns you <b>1 point</b>.</p>
+    </header>
+    <div id="composer-slot"></div>
+    <ol class="feed" id="feed" aria-live="polite"></ol>
+    <div class="more" id="more" hidden><button class="btn ghost" type="button" id="more-btn">Load more</button></div>
+  </section>
+
+  <section id="view-thread" hidden>
+    <button class="back" type="button" id="back">← Line</button>
+    <ol class="feed" id="thread-root"></ol>
+    <div id="reply-slot"></div>
+    <div class="replies-label mono" id="replies-label"></div>
+    <ol class="feed" id="replies"></ol>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="/qube.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { api, avatar, prepareMedia } = window.QUBE;
+  QUBE.nav("line");
+  const fmt = new Intl.NumberFormat("en-US");
+  const HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-7.5-10.1A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/></svg>';
+  const BUBBLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-11.1 6.6L4.5 19.5l1.4-4.1A7.5 7.5 0 1 1 20 11.5z"/></svg>';
+  const IMAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 4 3.5 3-2.5 4 3.5"/></svg>';
+
+  let me = null;
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2000);
+  }
+  function ago(iso) {
+    const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return "now";
+    if (s < 3600) return Math.floor(s / 60) + "m";
+    if (s < 86400) return Math.floor(s / 3600) + "h";
+    if (s < 604800) return Math.floor(s / 86400) + "d";
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  // Plain text with safe, clickable links.
+  function textWithLinks(el, text) {
+    const re = /\bhttps?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]]/g;
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      el.append(text.slice(last, m.index));
+      const a = document.createElement("a");
+      a.href = m[0]; a.textContent = m[0].replace(/^https?:\/\//, "");
+      a.target = "_blank"; a.rel = "noopener nofollow ugc";
+      el.append(a);
+      last = m.index + m[0].length;
+    }
+    el.append(text.slice(last));
+  }
+
+  // ---------------------------------------------------------------- posts
+  function renderPost(p, { big = false, reply = false } = {}) {
+    const mine = me && p.author_id === me.id;
+    const li = document.createElement("li");
+    li.className = "post" + (big ? " big" : "") + (reply ? " reply" : "");
+    li.dataset.id = p.id;
+
+    const av = document.createElement("span");
+    av.className = "av";
+    av.innerHTML = avatar(p.author_id);
+    const body = document.createElement("div");
+    body.style.minWidth = "0";
+
+    const head = document.createElement("div");
+    head.className = "p-head";
+    const who = document.createElement("b"); who.textContent = "@" + p.handle;
+    const when = document.createElement("time"); when.dateTime = p.created_at; when.textContent = ago(p.created_at);
+    when.title = new Date(p.created_at).toLocaleString();
+    head.append(who, when);
+    if (mine) {
+      const menu = document.createElement("div");
+      menu.className = "p-menu";
+      const dots = document.createElement("button");
+      dots.type = "button"; dots.textContent = "···"; dots.setAttribute("aria-label", "Post options");
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "del"; del.textContent = "Delete post"; del.hidden = true;
+      dots.addEventListener("click", (e) => { e.stopPropagation(); del.hidden = !del.hidden; });
+      del.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        del.disabled = true;
+        try {
+          await api.deletePost(p.id);
+          toast("Post deleted");
+          if (big) { location.hash = ""; } else { li.remove(); if (reply) route(); }
+        } catch (err) { toast(err.message); del.disabled = false; }
+      });
+      menu.append(dots, del);
+      head.append(menu);
+    }
+    body.append(head);
+
+    if (p.body) {
+      const t = document.createElement("div");
+      t.className = "p-text";
+      textWithLinks(t, p.body);
+      body.append(t);
+    }
+    if (p.media_url) {
+      const img = document.createElement("img");
+      img.className = "p-media"; img.src = p.media_url; img.loading = "lazy"; img.decoding = "async";
+      img.alt = p.body ? "Image attached to the post" : "Image posted by @" + p.handle;
+      body.append(img);
+      if (p.media_type === "gif") { const tag = document.createElement("span"); tag.className = "p-tag"; tag.textContent = "GIF"; body.append(tag); }
+    }
+
+    const act = document.createElement("div");
+    act.className = "p-act";
+    const like = document.createElement("button");
+    like.type = "button";
+    like.className = "act" + (p.liked ? " liked" : "");
+    like.innerHTML = HEART + `<span>${p.like_count ? fmt.format(p.like_count) : ""}</span>`;
+    like.setAttribute("aria-pressed", String(Boolean(p.liked)));
+    like.setAttribute("aria-label", `Like, ${p.like_count} likes`);
+    if (mine) { like.disabled = true; like.title = "Your post earns 1 point per like"; }
+    like.addEventListener("click", (e) => { e.stopPropagation(); toggleLike(p, like); });
+    act.append(like);
+    if (!reply) {
+      const rep = document.createElement("button");
+      rep.type = "button"; rep.className = "act";
+      rep.innerHTML = BUBBLE + `<span>${p.reply_count ? fmt.format(p.reply_count) : ""}</span>`;
+      rep.setAttribute("aria-label", `Reply, ${p.reply_count} replies`);
+      rep.addEventListener("click", (e) => { e.stopPropagation(); openThread(p.id, true); });
+      act.append(rep);
+    }
+    if (mine && p.like_count > 0) {
+      const earned = document.createElement("span");
+      earned.className = "earned";
+      earned.textContent = `+${fmt.format(p.like_count)} pts`;
+      act.append(earned);
+    }
+    body.append(act);
+
+    li.append(av, body);
+    if (!big) li.addEventListener("click", (e) => { if (!e.target.closest("a, button, textarea")) openThread(reply ? p.parent_id : p.id); });
+    return li;
+  }
+
+  async function toggleLike(p, btn) {
+    if (!me) { toast("Sign in to like posts"); return; }
+    const was = p.liked;
+    p.liked = !was;
+    p.like_count += was ? -1 : 1;
+    paint();
+    try {
+      p.like_count = was ? await api.unlike(p.id) : await api.like(p.id);
+      paint();
+    } catch (err) {
+      p.liked = was;
+      p.like_count += was ? 1 : -1;
+      paint();
+      toast(err.message);
+    }
+    function paint() {
+      btn.classList.toggle("liked", p.liked);
+      btn.classList.toggle("pop", p.liked);
+      btn.setAttribute("aria-pressed", String(p.liked));
+      btn.querySelector("span").textContent = p.like_count ? fmt.format(p.like_count) : "";
+    }
+  }
+
+  // ------------------------------------------------------------- composer
+  function composer({ parentId = null, placeholder = "Start a thread…", onPosted }) {
+    const wrap = document.createElement("div");
+    wrap.className = "composer";
+    wrap.innerHTML = `
+      <span class="av"></span>
+      <div>
+        <div class="who"></div>
+        <textarea rows="1" maxlength="600" aria-label="${placeholder}" placeholder="${placeholder}"></textarea>
+        <div class="attach-preview" hidden><img alt="Attachment preview"><button type="button" aria-label="Remove image">×</button></div>
+        <div class="c-err" role="alert"></div>
+        <div class="c-foot">
+          <button class="icon-btn" type="button" aria-label="Add an image or GIF">${IMAGE}</button>
+          <input type="file" accept="image/*" hidden>
+          <span class="count"></span>
+          <button class="btn" type="button" disabled>${parentId ? "Reply" : "Post"}</button>
+        </div>
+      </div>`;
+    wrap.querySelector(".av").innerHTML = avatar(me.id);
+    wrap.querySelector(".who").textContent = "@" + me.handle;
+    const ta = wrap.querySelector("textarea");
+    const file = wrap.querySelector("input[type=file]");
+    const prev = wrap.querySelector(".attach-preview");
+    const err = wrap.querySelector(".c-err");
+    const count = wrap.querySelector(".count");
+    const send = wrap.querySelector(".btn");
+    let media = null;
+
+    const update = () => {
+      ta.style.height = "auto";
+      ta.style.height = ta.scrollHeight + "px";
+      const n = ta.value.trim().length;
+      count.textContent = ta.value.length > 400 ? 500 - ta.value.length : "";
+      count.classList.toggle("over", ta.value.length > 500);
+      send.disabled = (!n && !media) || ta.value.length > 500;
+    };
+    ta.addEventListener("input", update);
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !send.disabled) send.click(); });
+    wrap.querySelector(".icon-btn").addEventListener("click", () => file.click());
+    file.addEventListener("change", async () => {
+      err.textContent = "";
+      const f = file.files[0];
+      file.value = "";
+      if (!f) return;
+      try {
+        media = await prepareMedia(f);
+        prev.querySelector("img").src = media.previewUrl;
+        prev.hidden = false;
+      } catch (e) { err.textContent = e.message; media = null; prev.hidden = true; }
+      update();
+    });
+    prev.querySelector("button").addEventListener("click", () => { media = null; prev.hidden = true; update(); });
+    send.addEventListener("click", async () => {
+      err.textContent = "";
+      send.disabled = true;
+      send.textContent = parentId ? "Replying…" : "Posting…";
+      try {
+        await api.post({ body: ta.value, media, parentId });
+        ta.value = ""; media = null; prev.hidden = true;
+        onPosted && onPosted();
+      } catch (e) { err.textContent = e.message; }
+      send.textContent = parentId ? "Reply" : "Post";
+      update();
+    });
+    update();
+    return wrap;
+  }
+
+  // ----------------------------------------------------------------- feed
+  let oldest = null;
+  async function loadFeed(append = false) {
+    const rows = await api.feed(append ? oldest : null);
+    const ol = $("feed");
+    if (!append) ol.textContent = "";
+    for (const p of rows) ol.append(renderPost(p));
+    if (rows.length) oldest = rows[rows.length - 1].id;
+    $("more").hidden = rows.length < 30;
+    if (!append && !rows.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = me ? "Nothing on the Line yet. Start the first thread." : "Nothing on the Line yet.";
+      ol.append(li);
+    }
+  }
+  $("more-btn").addEventListener("click", () => loadFeed(true).catch((e) => toast(e.message)));
+
+  function mountComposer() {
+    const slot = $("composer-slot");
+    slot.textContent = "";
+    if (me) {
+      slot.append(composer({ onPosted: () => { toast("Posted"); loadFeed(); } }));
+    } else {
+      const g = document.createElement("div");
+      g.className = "guest";
+      g.innerHTML = '<span>The Line is where QÜBE members post.</span><div><a class="btn" href="/points">Sign in</a><a class="btn ghost" href="/join">Join</a></div>';
+      slot.append(g);
+    }
+  }
+
+  // --------------------------------------------------------------- thread
+  function openThread(id, focusReply) {
+    const h = "#p" + id;
+    if (location.hash !== h) { location.hash = h; pendingFocus = focusReply; } else route(focusReply);
+  }
+  let pendingFocus = false;
+  async function showThread(id, focusReply) {
+    $("view-feed").hidden = true;
+    $("view-thread").hidden = false;
+    window.scrollTo(0, 0);
+    const rows = await api.thread(id);
+    const root = rows.find((r) => r.id === id);
+    const replies = rows.filter((r) => r.id !== id);
+    $("thread-root").textContent = "";
+    $("replies").textContent = "";
+    $("reply-slot").textContent = "";
+    if (!root) {
+      const li = document.createElement("li"); li.className = "empty"; li.textContent = "This post was deleted.";
+      $("thread-root").append(li);
+      $("replies-label").textContent = "";
+      return;
+    }
+    $("thread-root").append(renderPost(root, { big: true }));
+    if (me) {
+      const c = composer({ parentId: id, placeholder: `Reply to @${root.handle}…`, onPosted: () => { toast("Replied"); route(); } });
+      $("reply-slot").append(c);
+      if (focusReply) setTimeout(() => c.querySelector("textarea").focus(), 50);
+    }
+    $("replies-label").textContent = replies.length ? `${replies.length} ${replies.length === 1 ? "reply" : "replies"}` : "No replies yet";
+    for (const r of replies) $("replies").append(renderPost(r, { reply: true }));
+  }
+  $("back").addEventListener("click", () => { if (history.length > 1 && document.referrer.includes(location.host)) history.back(); else location.hash = ""; });
+
+  async function route(focusReply) {
+    const m = /^#p(\d+)$/.exec(location.hash);
+    if (m) return showThread(+m[1], focusReply ?? pendingFocus).finally(() => (pendingFocus = false));
+    $("view-thread").hidden = true;
+    $("view-feed").hidden = false;
+    await loadFeed();
+  }
+  window.addEventListener("hashchange", () => route().catch((e) => toast(e.message)));
+
+  // ----------------------------------------------------------------- boot
+  (async () => {
+    try { if (await api.hasSession()) me = await api.wallet(); } catch {}
+    mountComposer();
+    await route();
+  })().catch((e) => toast(e.message));
+})();
+</script>
+</body>
+</html>
