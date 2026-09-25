@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/workspace/qube/index.html" },
+    { "source": "/favicon.svg", "destination": "/workspace/qube/favicon.svg" },
+    { "source": "/og.png", "destination": "/workspace/qube/og.png" }
+  ]
+}
