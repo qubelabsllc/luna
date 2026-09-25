@@ -3,7 +3,10 @@
     { "source": "/", "destination": "/workspace/qube/index.html" },
     { "source": "/wallet", "destination": "/workspace/qube/wallet.html" },
     { "source": "/join", "destination": "/workspace/qube/wallet.html" },
+    { "source": "/sfere", "destination": "/workspace/qube/sfere.html" },
     { "source": "/config.js", "destination": "/workspace/qube/config.js" },
+    { "source": "/qube.js", "destination": "/workspace/qube/qube.js" },
+    { "source": "/data/:file", "destination": "/workspace/qube/data/:file" },
     { "source": "/favicon.svg", "destination": "/workspace/qube/favicon.svg" },
     { "source": "/og.png", "destination": "/workspace/qube/og.png" }
   ]

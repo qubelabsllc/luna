@@ -1,12 +1,20 @@
 # QÜBE wallet: Supabase setup
 
-The wallet at `/wallet` (also `/join`) uses Supabase for sign-in and for the points ledger.
+The wallet at `/wallet` (also `/join`) and the Sfere at `/sfere` use Supabase for sign-in, the points ledger, invites and Squares.
 Until `config.js` has real values, it runs in **preview mode**: one invite-only account (`preview` in `config.js`) whose email and access code are stored as SHA-256 hashes. Its balance lives in that browser only. Anyone else sees "invite-only for now". This is a front door, not security: everything runs in the browser and can be bypassed.
 
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
 2. Open **SQL Editor → New query**, paste all of `001_points.sql`, and click **Run**.
+3. Do the same with `002_sfere_invites.sql`.
+4. QÜBE is invite-only, so create the first invite and use it to sign up yourself:
+
+   ```sql
+   insert into public.invites (code) values ('QUBE-FOUNDER');
+   ```
+
+   After that, every member gets 10 invite codes on their profile.
 
 ## 2. Send a 6-digit code instead of a link
 
@@ -56,3 +64,19 @@ For real signups, connect an email provider in **Authentication → Emails → S
   | 1,000  | 0.5%   |
 
   To change the odds, edit the `weight` column in `spin_prizes`. The wheel shows the amounts in the `WHEEL` list in `wallet.html`, so keep the two in sync.
+
+## How invites and Squares work
+
+- Signing up needs an unused invite code. Codes are single-use.
+- Every new member gets 1 Square to place anywhere open on the Sfere. Placing is permanent.
+- The Sfere is cut into 1,243 bands of latitude, each 10 miles tall, and each band into Squares about 10 miles wide: **1,970,466 Squares** in all. `sfere_cols()` in SQL and `grid` in `qube.js` hold the same math.
+- Referral rewards are paid when an invited person finishes signing up:
+
+  | Level | Who | Reward | Most you can earn |
+  |------:|-----|--------|------------------:|
+  | 1 | People you invite | 1 Square each | 10 Squares |
+  | 2 | People they invite | 100 points each | 10,000 points |
+  | 3 | One level further | 10 points each | 10,000 points |
+  | 4+ | Everyone deeper | nothing | 0 |
+
+  Each level pays a tenth of the level above. Everyone has 10 invites, so each level's maximum total equals the one above it, and the whole tree is capped. Nobody pays to join, so rewards only come from real people signing up.

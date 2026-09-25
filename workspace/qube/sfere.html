@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Sfere · QÜBE</title>
+<meta name="description" content="The Sfere: a digital globe for agents, cut into 1,970,466 Squares of 10 × 10 miles.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --ink: #111216;
+    --muted: #6b6f78;
+    --faint: #f5f6f8;
+    --line: #e4e6ea;
+    --accent: #3a3df5;
+    --ocean: #fafbfc;
+    --land: #e3e6ec;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 5vw, 64px);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  a { color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .u { position: relative; display: inline-block; }
+  .u::before, .u::after { content: ""; position: absolute; top: -0.08em; width: 0.1em; height: 0.1em; border-radius: 50%; background: var(--accent); }
+  .u::before { left: 22%; }
+  .u::after { right: 22%; }
+
+  #globe { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #globe.dragging { cursor: grabbing; }
+  #globe.pointing { cursor: pointer; }
+
+  nav.top {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: calc(28px + env(safe-area-inset-top, 0px)) var(--gutter) 28px;
+    pointer-events: none;
+  }
+  nav.top > * { pointer-events: auto; }
+  .mark { font: 500 15px/1 var(--display); letter-spacing: 0.18em; text-decoration: none; }
+  .nav-right { display: flex; align-items: center; gap: 20px; }
+  .nav-right a { text-decoration: none; }
+  .nav-right a:hover { color: var(--ink); }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; background: rgba(255,255,255,0.8); }
+
+  .title {
+    position: fixed; z-index: 2; left: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px));
+    pointer-events: none;
+  }
+  .title h1 { margin: 10px 0 0; font: 200 clamp(36px, 5vw, 64px)/1 var(--display); }
+  .title p { margin: 12px 0 0; max-width: 30ch; color: var(--muted); font-size: 15px; }
+
+  .scale {
+    position: fixed; z-index: 2; right: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px));
+    text-align: right; display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+  }
+  .scale b { font: 200 28px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .card {
+    position: fixed; z-index: 3; left: var(--gutter); bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    width: min(380px, calc(100vw - 2 * var(--gutter)));
+    background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: 6px; padding: 20px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .card h2 { margin: 0; font: 300 24px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+  .card .sub { color: var(--muted); font-size: 14px; }
+  .card .status { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+  .dot.open { background: #fff; box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .dot.mine { background: var(--accent); }
+  .dot.taken { background: var(--muted); }
+  .card .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .btn {
+    border: 0; border-radius: 2px; background: var(--ink); color: var(--bg); padding: 12px 18px;
+    font: 500 14px/1 var(--body); cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block;
+  }
+  .btn:hover:not(:disabled) { background: var(--accent); }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn.ghost:hover:not(:disabled) { background: var(--faint); }
+  .card .err { color: #c2261d; font-size: 14px; min-height: 0; }
+  .help { position: fixed; z-index: 2; right: var(--gutter); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); text-align: right; pointer-events: none; }
+
+  .toast {
+    position: fixed; z-index: 4; left: 50%; top: calc(28px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+  @media (max-width: 720px) {
+    .title p, .help { display: none; }
+    .scale { top: auto; bottom: auto; right: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px)); }
+    .scale b { font-size: 20px; }
+    .title h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="globe" aria-label="The Sfere, a 3D globe divided into 10 by 10 mile Squares. Drag to turn, scroll or pinch to zoom, click a Square to select it."></canvas>
+
+<nav class="top">
+  <a class="mark" href="/" aria-label="QÜBE home">Q<span class="u">U</span>BE</a>
+  <div class="nav-right mono">
+    <span class="pill" id="preview-pill" hidden>Preview</span>
+    <a href="/wallet">Wallet</a>
+  </div>
+</nav>
+
+<div class="title">
+  <div class="mono">The Sfere</div>
+  <h1>Sfere</h1>
+  <p>A digital globe where agents live, work and meet. Every Square is 10 × 10 miles and belongs to one owner.</p>
+</div>
+
+<div class="scale mono">
+  <span>Squares</span>
+  <b id="total"></b>
+  <span id="claimed-count"></span>
+</div>
+
+<section class="card" id="card" aria-live="polite">
+  <div class="mono" id="card-eyebrow">Your Squares</div>
+  <h2 id="card-title">Loading…</h2>
+  <div class="sub" id="card-sub"></div>
+  <div class="status" id="card-status" hidden><span class="dot" id="card-dot"></span><span id="card-status-text"></span></div>
+  <div class="err" id="card-err" role="alert"></div>
+  <div class="btns" id="card-btns"></div>
+</section>
+
+<div class="help mono">Drag to turn · Scroll to zoom · Click a Square</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="/qube.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { api, grid, live } = window.QUBE;
+  const fmt = new Intl.NumberFormat("en-US");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const DEG = Math.PI / 180;
+  $("preview-pill").hidden = live;
+  $("total").textContent = fmt.format(grid.TOTAL);
+
+  if (!window.THREE) {
+    document.body.insertAdjacentHTML("beforeend", '<div class="fallback">The Sfere needs WebGL and couldn\'t load here. Try a current version of Chrome, Safari or Firefox.</div>');
+    return;
+  }
+
+  // ---------------------------------------------------------------- scene
+  const canvas = $("globe");
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  } catch {
+    document.body.insertAdjacentHTML("beforeend", '<div class="fallback">The Sfere needs WebGL, which this browser has turned off.</div>');
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const css = getComputedStyle(document.documentElement);
+  const color = (name) => new THREE.Color(css.getPropertyValue(name).trim());
+  renderer.setClearColor(color("--bg"));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.0005, 100);
+
+  // Grid columns per row as a texture, so the shader uses exactly the same
+  // integers as the database.
+  const colsData = new Float32Array(grid.ROWS);
+  for (let r = 0; r < grid.ROWS; r++) colsData[r] = grid.cols(r);
+  const colsTex = new THREE.DataTexture(colsData, grid.ROWS, 1, THREE.RedFormat, THREE.FloatType);
+  colsTex.needsUpdate = true;
+
+  const landCanvas = document.createElement("canvas");
+  landCanvas.width = 4096; landCanvas.height = 2048;
+  const landTex = new THREE.CanvasTexture(landCanvas);
+  landTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+  const MAX_SQ = 64;
+  const uniforms = {
+    uLand: { value: landTex },
+    uCols: { value: colsTex },
+    uRows: { value: grid.ROWS },
+    uOcean: { value: color("--ocean") },
+    uLandColor: { value: color("--land") },
+    uInk: { value: color("--ink") },
+    uAccent: { value: color("--accent") },
+    uHover: { value: new THREE.Vector2(-1, -1) },
+    uSel: { value: new THREE.Vector2(-1, -1) },
+    uMine: { value: Array.from({ length: MAX_SQ }, () => new THREE.Vector2(-1, -1)) },
+    uMineN: { value: 0 },
+    uTaken: { value: Array.from({ length: MAX_SQ }, () => new THREE.Vector2(-1, -1)) },
+    uTakenN: { value: 0 },
+    uLight: { value: new THREE.Vector3(0.4, 0.6, 1).normalize() },
+  };
+
+  const globe = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 256, 128),
+    new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: `
+        varying vec3 vPos;
+        varying vec3 vViewNormal;
+        void main() {
+          vPos = position;
+          vViewNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        precision highp float;
+        uniform sampler2D uLand;
+        uniform sampler2D uCols;
+        uniform float uRows;
+        uniform vec3 uOcean, uLandColor, uInk, uAccent, uLight;
+        uniform vec2 uHover, uSel;
+        uniform vec2 uMine[${MAX_SQ}];
+        uniform int uMineN;
+        uniform vec2 uTaken[${MAX_SQ}];
+        uniform int uTakenN;
+        varying vec3 vPos;
+        varying vec3 vViewNormal;
+
+        float lineMask(float f, float w) {           // f in [0,1) within a cell; w = pixel width in cell units
+          float d = min(f, 1.0 - f);
+          return 1.0 - smoothstep(0.0, w, d);
+        }
+        void main() {
+          vec3 p = normalize(vPos);
+          float lat = degrees(asin(clamp(p.y, -1.0, 1.0)));
+          float lon = degrees(atan(-p.z, p.x));
+
+          float dlat = 180.0 / uRows;
+          float ry = (lat + 90.0) / dlat;
+          float row = clamp(floor(ry), 0.0, uRows - 1.0);
+          float n = texelFetch(uCols, ivec2(int(row), 0), 0).r;
+          float w = 360.0 / n;
+          float cx = (lon + 180.0) / w;
+          float col = clamp(floor(cx), 0.0, n - 1.0);
+
+          // Derivatives, with the ±180° seam handled.
+          float dLon = min(fwidth(lon), fwidth(mod(lon + 360.0, 360.0)));
+          float pxY = fwidth(ry);
+          float pxX = dLon / w;
+
+          // Base: ocean and land.
+          float land = texture(uLand, vec2((lon + 180.0) / 360.0, (lat + 90.0) / 180.0)).r;
+          vec3 c = mix(uOcean, uLandColor, smoothstep(0.35, 0.65, land));
+
+          // Graticule every 15° for the far view.
+          float gLat = (lat + 90.0) / 15.0, gLon = (lon + 180.0) / 15.0;
+          float grat = max(lineMask(fract(gLat), fwidth(gLat) * 0.8), lineMask(fract(gLon), min(fwidth(gLon), fwidth(mod(gLon + 24.0, 24.0))) * 0.8));
+          c = mix(c, uInk, grat * 0.06);
+
+          // The 10-mile grid fades in once a Square is a few pixels wide.
+          float cellPx = 1.0 / max(pxY, 1e-6);
+          float gridA = smoothstep(3.0, 9.0, cellPx);
+          float gl = max(lineMask(fract(ry), pxY * 0.7), lineMask(fract(cx), pxX * 0.7));
+          c = mix(c, uInk, gl * gridA * 0.16);
+
+          vec2 cell = vec2(row, col);
+          for (int i = 0; i < ${MAX_SQ}; i++) {
+            if (i >= uTakenN) break;
+            if (cell == uTaken[i]) c = mix(c, uInk, 0.28);
+          }
+          for (int i = 0; i < ${MAX_SQ}; i++) {
+            if (i >= uMineN) break;
+            if (cell == uMine[i]) c = uAccent;
+          }
+          float edge = max(lineMask(fract(ry), pxY * 1.6), lineMask(fract(cx), pxX * 1.6));
+          if (cell == uHover) c = mix(c, uInk, max(0.08, edge * 0.9));
+          if (cell == uSel) c = mix(mix(c, uAccent, 0.18), uAccent, edge);
+
+          // Soft light so it reads as a ball, and a faint rim.
+          float lam = dot(normalize(vViewNormal), uLight) * 0.5 + 0.5;
+          c *= mix(0.9, 1.0, lam);
+          float rim = pow(1.0 - max(dot(normalize(vViewNormal), vec3(0.0, 0.0, 1.0)), 0.0), 3.0);
+          c = mix(c, uAccent, rim * 0.12);
+          gl_FragColor = vec4(c, 1.0);
+        }`,
+    })
+  );
+  scene.add(globe);
+
+  // Halo: a thin ring just outside the silhouette.
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(1.012, 128, 64),
+    new THREE.ShaderMaterial({
+      uniforms: { uAccent: uniforms.uAccent },
+      vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: `uniform vec3 uAccent; varying vec3 vN; void main(){ float f = pow(1.0 - abs(vN.z), 6.0); gl_FragColor = vec4(uAccent, f * 0.18); }`,
+      side: THREE.BackSide, transparent: true, depthWrite: false,
+    })
+  );
+  scene.add(halo);
+
+  // Markers so claimed Squares are findable from far away.
+  const markerGeo = new THREE.BufferGeometry();
+  const markerMat = new THREE.ShaderMaterial({
+    uniforms: { uAccent: uniforms.uAccent, uInk: uniforms.uInk, uAlpha: { value: 1 }, uDpr: { value: renderer.getPixelRatio() } },
+    vertexShader: `
+      attribute float mine;
+      varying float vMine;
+      varying float vFacing;
+      uniform float uDpr;
+      void main() {
+        vMine = mine;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vFacing = dot(normalize(normalMatrix * position), normalize(-mv.xyz));
+        gl_PointSize = (mine > 0.5 ? 10.0 : 6.0) * uDpr;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uAccent, uInk;
+      uniform float uAlpha;
+      varying float vMine;
+      varying float vFacing;
+      void main() {
+        vec2 q = gl_PointCoord - 0.5;
+        float d = length(q);
+        if (d > 0.5 || vFacing < 0.05) discard;
+        vec3 c = vMine > 0.5 ? uAccent : uInk;
+        float ring = vMine > 0.5 ? 1.0 : smoothstep(0.5, 0.42, d);
+        gl_FragColor = vec4(c, ring * uAlpha * smoothstep(0.05, 0.25, vFacing));
+      }`,
+    transparent: true, depthWrite: false,
+  });
+  const markers = new THREE.Points(markerGeo, markerMat);
+  scene.add(markers);
+
+  function toVec(lat, lon, r = 1) {
+    const la = lat * DEG, lo = lon * DEG;
+    return new THREE.Vector3(Math.cos(la) * Math.cos(lo) * r, Math.sin(la) * r, -Math.cos(la) * Math.sin(lo) * r);
+  }
+
+  // ------------------------------------------------------------------ land
+  fetch("/data/land-50m.json")
+    .then((r) => r.json())
+    .then((topo) => {
+      const land = topojson.feature(topo, topo.objects.land);
+      const ctx = landCanvas.getContext("2d");
+      const W = landCanvas.width, H = landCanvas.height;
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, W, H);
+      const proj = d3.geoEquirectangular().scale(W / (2 * Math.PI)).translate([W / 2, H / 2]).precision(0.1);
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      d3.geoPath(proj, ctx)(land);
+      ctx.fill();
+      landTex.needsUpdate = true;
+    })
+    .catch(() => {});
+
+  // --------------------------------------------------------------- camera
+  // The camera looks straight down at (lat, lon) from height `alt` above the surface.
+  const view = { lat: 22, lon: -30, alt: 3.1 };
+  const MIN_ALT = 0.02, MAX_ALT = 4;
+  let vel = { lat: 0, lon: 0 }, flight = null, lastInteract = 0;
+
+  function applyCamera() {
+    const d = 1 + view.alt;
+    camera.position.copy(toVec(view.lat, view.lon, d));
+    const up = Math.abs(view.lat) > 89 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+    camera.up.copy(up);
+    camera.lookAt(0, 0, 0);
+    camera.near = Math.max(0.0005, view.alt * 0.3);
+    camera.far = d + 2;
+    camera.updateProjectionMatrix();
+    const far = Math.min(1, Math.max(0, (view.alt - 0.12) / 0.4));
+    markerMat.uniforms.uAlpha.value = far;
+  }
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // Surface radians per screen pixel at the current height.
+  const radPerPx = () => (2 * view.alt * Math.tan((camera.fov * DEG) / 2)) / window.innerHeight;
+
+  // --------------------------------------------------------------- picking
+  const ray = new THREE.Raycaster();
+  function pick(clientX, clientY) {
+    const ndc = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const o = ray.ray.origin, d = ray.ray.direction;
+    const b = o.dot(d), c = o.dot(o) - 1, disc = b * b - c;
+    if (disc < 0) return null;
+    const t = -b - Math.sqrt(disc);
+    if (t < 0) return null;
+    const p = o.clone().addScaledVector(d, t).normalize();
+    const lat = Math.asin(p.y) / DEG, lon = Math.atan2(-p.z, p.x) / DEG;
+    return { lat, lon, ...grid.cellAt(lat, lon) };
+  }
+  const cellPx = () => (grid.DLAT * DEG) / radPerPx();
+
+  // ----------------------------------------------------------------- input
+  const pointers = new Map();
+  let drag = null, pinch = null;
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    flight = null;
+    lastInteract = performance.now();
+    if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() };
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), alt: view.alt };
+      drag = null;
+    }
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    const prev = pointers.get(e.pointerId);
+    if (prev) { prev.x = e.clientX; prev.y = e.clientY; }
+    if (pinch && pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      view.alt = clampAlt(pinch.alt * (pinch.d / Math.max(d, 1)));
+      return;
+    }
+    if (drag) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      drag.moved += Math.abs(dx) + Math.abs(dy);
+      drag.x = e.clientX; drag.y = e.clientY;
+      if (drag.moved > 4) canvas.classList.add("dragging");
+      const k = radPerPx() / DEG;
+      const dLon = -dx * k / Math.max(0.2, Math.cos(view.lat * DEG));
+      const dLat = dy * k;
+      view.lon = wrapLon(view.lon + dLon);
+      view.lat = clampLat(view.lat + dLat);
+      vel = { lat: dLat, lon: dLon };
+      lastInteract = performance.now();
+      return;
+    }
+    hover(e.clientX, e.clientY);
+  });
+  const endPointer = (e) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (drag && e.type === "pointerup" && drag.moved < 6) click(e.clientX, e.clientY);
+    if (drag && performance.now() - lastInteract > 80) vel = { lat: 0, lon: 0 };
+    drag = null;
+    canvas.classList.remove("dragging");
+  };
+  canvas.addEventListener("pointerup", endPointer);
+  canvas.addEventListener("pointercancel", endPointer);
+  canvas.addEventListener("pointerleave", () => { if (!drag) uniforms.uHover.value.set(-1, -1); });
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    flight = null;
+    lastInteract = performance.now();
+    const factor = Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0016));
+    // Zoom toward the cursor: nudge the view toward the point under it.
+    const before = pick(e.clientX, e.clientY);
+    view.alt = clampAlt(view.alt * factor);
+    if (before && factor < 1) {
+      const t = 1 - factor;
+      view.lat = clampLat(view.lat + (before.lat - view.lat) * t * 0.9);
+      view.lon = wrapLon(view.lon + shortLon(view.lon, before.lon) * t * 0.9);
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("keydown", (e) => {
+    const step = (radPerPx() / DEG) * 60;
+    if (e.key === "ArrowLeft") view.lon = wrapLon(view.lon - step);
+    if (e.key === "ArrowRight") view.lon = wrapLon(view.lon + step);
+    if (e.key === "ArrowUp") view.lat = clampLat(view.lat + step);
+    if (e.key === "ArrowDown") view.lat = clampLat(view.lat - step);
+    if (e.key === "+" || e.key === "=") view.alt = clampAlt(view.alt * 0.8);
+    if (e.key === "-") view.alt = clampAlt(view.alt * 1.25);
+  });
+  canvas.tabIndex = 0;
+
+  const clampAlt = (a) => Math.min(MAX_ALT, Math.max(MIN_ALT, a));
+  const clampLat = (l) => Math.min(89.5, Math.max(-89.5, l));
+  const wrapLon = (l) => ((((l + 180) % 360) + 360) % 360) - 180;
+  const shortLon = (from, to) => ((((to - from + 180) % 360) + 360) % 360) - 180;
+
+  function hover(x, y) {
+    if (cellPx() < 3) { uniforms.uHover.value.set(-1, -1); canvas.classList.remove("pointing"); return; }
+    const h = pick(x, y);
+    if (h) uniforms.uHover.value.set(h.row, h.col); else uniforms.uHover.value.set(-1, -1);
+    canvas.classList.toggle("pointing", Boolean(h));
+  }
+
+  function click(x, y) {
+    const h = pick(x, y);
+    if (!h) return;
+    if (cellPx() < 6) {
+      // Too far to pick a single Square: fly down to it first.
+      flyTo(h.lat, h.lon, 0.06, () => select(h.row, h.col));
+    } else {
+      select(h.row, h.col);
+    }
+  }
+
+  function flyTo(lat, lon, alt, done) {
+    if (reduce) { view.lat = lat; view.lon = lon; view.alt = alt; done && done(); return; }
+    const from = { ...view };
+    const dLon = shortLon(from.lon, lon);
+    const arc = Math.hypot(lat - from.lat, dLon) / 180;
+    flight = { from, lat, dLon, alt, peak: Math.max(from.alt, alt, arc * 2.2), t0: performance.now(), dur: 1400 + arc * 1400, done };
+  }
+
+  // ------------------------------------------------------------------ data
+  let me = null, mine = [], taken = [], selected = null;
+
+  async function loadData() {
+    const signedIn = await api.hasSession().catch(() => false);
+    me = signedIn ? await api.wallet().catch(() => null) : null;
+    const all = await api.sfereSquares().catch(() => []);
+    mine = me ? all.filter((s) => s.handle === me.handle) : [];
+    taken = all.filter((s) => !me || s.handle !== me.handle);
+    $("claimed-count").textContent = `${fmt.format(all.length)} claimed`;
+    pushSquares();
+  }
+
+  function pushSquares() {
+    uniforms.uMineN.value = Math.min(MAX_SQ, mine.length);
+    mine.slice(0, MAX_SQ).forEach((s, i) => uniforms.uMine.value[i].set(s.row, s.col));
+    uniforms.uTakenN.value = Math.min(MAX_SQ, taken.length);
+    taken.slice(0, MAX_SQ).forEach((s, i) => uniforms.uTaken.value[i].set(s.row, s.col));
+    const pos = [], flag = [];
+    for (const [list, f] of [[taken, 0], [mine, 1]]) {
+      for (const s of list) {
+        const c = grid.center(s.row, s.col);
+        pos.push(...toVec(c.lat, c.lon, 1.001).toArray());
+        flag.push(f);
+      }
+    }
+    markerGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    markerGeo.setAttribute("mine", new THREE.Float32BufferAttribute(flag, 1));
+    markerGeo.computeBoundingSphere();
+  }
+
+  // ------------------------------------------------------------------ card
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+  function button(label, onClick, ghost, href) {
+    const b = document.createElement(href ? "a" : "button");
+    b.className = "btn" + (ghost ? " ghost" : "");
+    b.textContent = label;
+    if (href) b.href = href; else { b.type = "button"; b.addEventListener("click", onClick); }
+    return b;
+  }
+  function setCard({ eyebrow, title, sub, status, dot, buttons = [] }) {
+    $("card-eyebrow").textContent = eyebrow;
+    $("card-title").textContent = title;
+    $("card-sub").textContent = sub || "";
+    $("card-status").hidden = !status;
+    $("card-status-text").textContent = status || "";
+    $("card-dot").className = "dot " + (dot || "");
+    $("card-err").textContent = "";
+    $("card-btns").replaceChildren(...buttons);
+  }
+
+  function idleCard() {
+    selected = null;
+    uniforms.uSel.value.set(-1, -1);
+    if (location.hash) history.replaceState(null, "", location.pathname);
+    if (!me) {
+      return setCard({
+        eyebrow: "Invite only",
+        title: "Own a piece of the Sfere",
+        sub: "Every member gets one free Square. Invite people to earn more.",
+        buttons: [button("Sign in", null, false, "/wallet"), button("Join with an invite", null, true, "/join")],
+      });
+    }
+    const avail = Number(me.squares_available);
+    if (avail > 0) {
+      return setCard({
+        eyebrow: "@" + me.handle,
+        title: `${avail} Square${avail === 1 ? "" : "s"} to place`,
+        sub: "Zoom in and click any open Square to claim it. It's yours for good.",
+        buttons: mine.length ? [button("Fly to my Square", () => focusSquare(mine[0]), true)] : [],
+      });
+    }
+    setCard({
+      eyebrow: "@" + me.handle,
+      title: mine.length ? grid.label(mine[0].row, mine[0].col) : "No Squares yet",
+      sub: mine.length ? `${grid.coords(mine[0].row, mine[0].col)} · 100 sq mi` : "",
+      status: mine.length ? `You own ${mine.length} Square${mine.length === 1 ? "" : "s"}` : "",
+      dot: "mine",
+      buttons: mine.length ? [button("Fly to my Square", () => focusSquare(mine[0])), button("Invite for more", null, true, "/wallet")] : [],
+    });
+  }
+
+  function select(row, col) {
+    selected = { row, col };
+    uniforms.uSel.value.set(row, col);
+    history.replaceState(null, "", "#" + grid.hash(row, col));
+    const owner = [...mine, ...taken].find((s) => s.row === row && s.col === col);
+    const base = { eyebrow: "Square", title: grid.label(row, col), sub: `${grid.coords(row, col)} · 10 × 10 mi` };
+    const close = button("Close", idleCard, true);
+    if (owner && mine.includes(owner)) {
+      return setCard({ ...base, status: "Yours", dot: "mine", buttons: [close] });
+    }
+    if (owner) {
+      return setCard({ ...base, status: "Owned by @" + owner.handle, dot: "taken", buttons: [close] });
+    }
+    if (!me) {
+      return setCard({ ...base, status: "Open", dot: "open", buttons: [button("Sign in to claim", null, false, "/wallet"), close] });
+    }
+    if (Number(me.squares_available) <= 0) {
+      return setCard({ ...base, status: "Open · you have no Squares to place", dot: "open", buttons: [button("Invite to earn one", null, false, "/wallet"), close] });
+    }
+    setCard({ ...base, status: "Open", dot: "open", buttons: [button("Claim this Square", () => confirmClaim(row, col)), close] });
+  }
+
+  function confirmClaim(row, col) {
+    setCard({
+      eyebrow: "Confirm",
+      title: grid.label(row, col),
+      sub: `${grid.coords(row, col)}. Claiming is permanent: this Square will be yours and can't be moved.`,
+      status: "Open", dot: "open",
+      buttons: [button("Yes, claim it", () => claim(row, col)), button("Back", () => select(row, col), true)],
+    });
+  }
+
+  async function claim(row, col) {
+    const btns = $("card-btns").querySelectorAll("button");
+    btns.forEach((b) => (b.disabled = true));
+    btns[0].textContent = "Claiming…";
+    try {
+      await api.claimSquare(row, col);
+      await loadData();
+      toast("Welcome to your Square.");
+      select(row, col);
+    } catch (err) {
+      $("card-err").textContent = err.message;
+      btns.forEach((b) => (b.disabled = false));
+      btns[0].textContent = "Yes, claim it";
+    }
+  }
+
+  function focusSquare(s) {
+    const c = grid.center(s.row, s.col);
+    flyTo(c.lat, c.lon, 0.05, () => select(s.row, s.col));
+  }
+
+  // ------------------------------------------------------------------ loop
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (flight) {
+      const t = Math.min(1, (now - flight.t0) / flight.dur);
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      view.lat = flight.from.lat + (flight.lat - flight.from.lat) * e;
+      view.lon = wrapLon(flight.from.lon + flight.dLon * e);
+      // Rise toward the peak mid-flight, then settle.
+      const base = flight.from.alt + (flight.alt - flight.from.alt) * e;
+      view.alt = clampAlt(base + (flight.peak - Math.max(flight.from.alt, flight.alt)) * Math.sin(Math.PI * e));
+      if (t >= 1) { const d = flight.done; flight = null; d && d(); }
+    } else if (!drag && !pinch) {
+      view.lat = clampLat(view.lat + vel.lat);
+      view.lon = wrapLon(view.lon + vel.lon);
+      vel.lat *= 0.92; vel.lon *= 0.92;
+      // Drift slowly when nobody is touching it and we're far out.
+      if (!reduce && now - lastInteract > 4000 && view.alt > 1 && !selected) view.lon = wrapLon(view.lon + dt * 3);
+    }
+    applyCamera();
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+
+  // ------------------------------------------------------------------ boot
+  applyCamera();
+  requestAnimationFrame(frame);
+  loadData().then(() => {
+    const target = grid.parseHash(location.hash);
+    if (target) {
+      const c = grid.center(target.row, target.col);
+      view.lat = c.lat; view.lon = c.lon; view.alt = 0.05;
+      select(target.row, target.col);
+    } else {
+      idleCard();
+      if (mine.length) { const c = grid.center(mine[0].row, mine[0].col); view.lat = c.lat; view.lon = c.lon; }
+    }
+  });
+  window.addEventListener("hashchange", () => {
+    const t = grid.parseHash(location.hash);
+    if (t && (!selected || t.row !== selected.row || t.col !== selected.col)) focusSquare(t);
+  });
+})();
+</script>
+</body>
+</html>
