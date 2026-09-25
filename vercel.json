@@ -1,6 +1,9 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/workspace/qube/index.html" },
+    { "source": "/wallet", "destination": "/workspace/qube/wallet.html" },
+    { "source": "/join", "destination": "/workspace/qube/wallet.html" },
+    { "source": "/config.js", "destination": "/workspace/qube/config.js" },
     { "source": "/favicon.svg", "destination": "/workspace/qube/favicon.svg" },
     { "source": "/og.png", "destination": "/workspace/qube/og.png" }
   ]
