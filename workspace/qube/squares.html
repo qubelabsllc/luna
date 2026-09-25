@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Squares · QÜBE</title>
+<meta name="description" content="Your Squares: 10 × 10 mile lots on the Sfere, QÜBE's digital globe.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/qube.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --ink: #111216;
+    --muted: #6b6f78;
+    --faint: #f5f6f8;
+    --line: #e4e6ea;
+    --accent: #3a3df5;
+    --land: #e3e6ec;
+    --ocean: #fafbfc;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 5vw, 64px);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 8px var(--gutter) 96px; display: flex; flex-direction: column; gap: 40px; }
+  .head { display: flex; justify-content: space-between; align-items: end; gap: 24px; flex-wrap: wrap; padding-block: 16px 20px; border-bottom: 1px solid var(--ink); }
+  .head h1 { margin: 8px 0 0; font: 200 clamp(36px, 6vw, 52px)/1 var(--display); }
+  .head p { margin: 0; max-width: 36ch; color: var(--muted); font-size: 15px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: -20px; }
+  .stat { padding: 20px 20px 0 0; display: flex; flex-direction: column; gap: 6px; }
+  .stat + .stat { padding-left: 20px; border-left: 1px solid var(--line); }
+  .stat b { font: 200 clamp(32px, 5vw, 44px)/1 var(--display); font-variant-numeric: tabular-nums; }
+  .stat span.s { font-size: 14px; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  .deed { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; text-decoration: none; display: flex; flex-direction: column; transition: border-color 0.2s, transform 0.2s; }
+  .deed:hover { border-color: var(--ink); }
+  .deed .map { position: relative; aspect-ratio: 1 / 1; background: var(--faint); }
+  .deed canvas { display: block; width: 100%; height: 100%; max-width: 100%; }
+  .deed .info { padding: 16px; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); }
+  .deed h2 { margin: 0; font: 300 20px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+  .deed .s { font-size: 14px; color: var(--muted); }
+  .deed .go { margin-top: 8px; font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .deed.empty { border-style: dashed; justify-content: center; align-items: center; text-align: center; gap: 12px; padding: 32px; min-height: 260px; }
+  .deed.empty .plus { width: 56px; height: 56px; border: 1px dashed var(--muted); display: grid; place-items: center; font: 200 28px/1 var(--display); color: var(--muted); }
+  .deed.empty:hover .plus { border-color: var(--accent); color: var(--accent); }
+
+  .earn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .earn > div { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .earn h3 { margin: 0; font: 300 20px/1.2 var(--display); }
+  .earn p { margin: 0; color: var(--muted); font-size: 15px; max-width: 42ch; }
+  .earn a { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; }
+  .earn a:hover { color: var(--accent); }
+  .soon { align-self: flex-start; border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; }
+
+  .guest { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; padding-block: 24px; }
+  .guest p { margin: 0; max-width: 46ch; color: var(--muted); }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 999px; background: var(--ink); color: #fff; padding: 12px 18px; font: 500 14px/1 var(--body); text-decoration: none; display: inline-block; transition: background 0.2s; }
+  .btn:hover { background: var(--accent); }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .stat { padding-right: 10px; }
+    .stat + .stat { padding-left: 12px; }
+    .earn { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <div>
+      <div class="mono">Land on the Sfere</div>
+      <h1>Squares</h1>
+    </div>
+    <p>Each Square is a 10 × 10 mile lot on the Sfere. Once placed, it's yours for good.</p>
+  </header>
+
+  <section class="guest" id="guest" hidden>
+    <p>Squares belong to QÜBE members. Every member gets one free Square, and each person they invite earns them another.</p>
+    <div class="btns"><a class="btn" href="/points">Sign in</a><a class="btn ghost" href="/join">Join with an invite</a><a class="btn ghost" href="/sfere">Explore the Sfere</a></div>
+  </section>
+
+  <div id="member" hidden>
+    <div class="stats">
+      <div class="stat"><span class="mono">Owned</span><b id="owned">0</b><span class="s">placed on the Sfere</span></div>
+      <div class="stat"><span class="mono">To place</span><b id="avail">0</b><span class="s">ready to claim</span></div>
+      <div class="stat"><span class="mono">From invites</span><b id="earned">0</b><span class="s">of 10 possible</span></div>
+    </div>
+  </div>
+
+  <section class="grid" id="grid" aria-label="Your Squares" hidden></section>
+
+  <section class="earn" id="earn" hidden>
+    <div>
+      <span class="mono">Earn more</span>
+      <h3>Invite people</h3>
+      <p>Each person you invite who joins gives you a Square, up to 10. They get their own free Square too.</p>
+      <a href="/points?tab=invites">Your invite codes →</a>
+    </div>
+    <div>
+      <span class="mono soon">Coming soon</span>
+      <h3>Staking</h3>
+      <p>Stake a Square to earn points from what happens on it. Your Squares will be ready when it launches.</p>
+    </div>
+  </section>
+</main>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="/qube.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { api, grid } = window.QUBE;
+  QUBE.nav("squares");
+  const fmt = new Intl.NumberFormat("en-US");
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n) => css.getPropertyValue(n).trim();
+
+  // Land outline, shared by every card's little globe.
+  const landReady = fetch("/data/land-50m.json").then((r) => r.json())
+    .then((t) => (window.topojson ? topojson.feature(t, t.objects.land) : null)).catch(() => null);
+
+  async function drawGlobe(canvas, row, col) {
+    const land = await landReady;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const size = canvas.clientWidth || 300;
+    canvas.width = canvas.height = Math.round(size * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    const { lat, lon } = grid.center(row, col);
+    const R = size * 0.42;
+    ctx.fillStyle = tok("--faint");
+    ctx.fillRect(0, 0, size, size);
+    if (!window.d3) return;
+    const proj = d3.geoOrthographic().rotate([-lon, -lat]).scale(R).translate([size / 2, size / 2]).clipAngle(90);
+    const path = d3.geoPath(proj, ctx);
+    ctx.beginPath(); path({ type: "Sphere" }); ctx.fillStyle = tok("--ocean"); ctx.fill();
+    ctx.beginPath(); path(d3.geoGraticule10()); ctx.strokeStyle = "rgba(17,18,22,0.06)"; ctx.lineWidth = 1; ctx.stroke();
+    if (land) { ctx.beginPath(); path(land); ctx.fillStyle = tok("--land"); ctx.fill(); }
+    ctx.beginPath(); path({ type: "Sphere" }); ctx.strokeStyle = tok("--line"); ctx.stroke();
+    // The Square itself is tiny at this scale: mark it with the Ü's dot and a ring.
+    const [x, y] = proj([lon, lat]);
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.strokeStyle = tok("--accent"); ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = tok("--accent"); ctx.fill();
+  }
+
+  (async () => {
+    const signedIn = await api.hasSession().catch(() => false);
+    const w = signedIn ? await api.wallet().catch(() => null) : null;
+    if (!w) { $("guest").hidden = false; return; }
+    const [squares, network] = await Promise.all([api.mySquares(), api.network()]);
+    const avail = Number(w.squares_available);
+    $("member").hidden = $("grid").hidden = $("earn").hidden = false;
+    $("owned").textContent = fmt.format(squares.length);
+    $("avail").textContent = fmt.format(avail);
+    $("earned").textContent = fmt.format(Number((network.find((n) => n.level === 1) || {}).earned_squares || 0));
+
+    const g = $("grid");
+    for (const q of squares) {
+      const a = document.createElement("a");
+      a.className = "deed";
+      a.href = "/sfere#" + grid.hash(q.row, q.col);
+      a.innerHTML = '<div class="map"><canvas></canvas></div><div class="info"><h2></h2><span class="s coords"></span><span class="s when"></span><span class="go">Open in Sfere →</span></div>';
+      a.querySelector("h2").textContent = grid.label(q.row, q.col);
+      a.querySelector(".coords").textContent = `${grid.coords(q.row, q.col)} · 100 sq mi`;
+      a.querySelector(".when").textContent = "Claimed " + new Date(q.claimed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      a.querySelector("canvas").setAttribute("aria-label", `Globe centered on ${grid.coords(q.row, q.col)}`);
+      g.append(a);
+      requestAnimationFrame(() => drawGlobe(a.querySelector("canvas"), q.row, q.col));
+    }
+    for (let i = 0; i < avail; i++) {
+      const a = document.createElement("a");
+      a.className = "deed empty";
+      a.href = "/sfere";
+      a.innerHTML = '<span class="plus">+</span><h2>Place a Square</h2><span class="s">Pick any open lot on the Sfere</span>';
+      g.append(a);
+    }
+  })();
+})();
+</script>
+</body>
+</html>

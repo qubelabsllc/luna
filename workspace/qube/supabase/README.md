@@ -1,13 +1,13 @@
 # QÜBE wallet: Supabase setup
 
-The wallet at `/wallet` (also `/join`) and the Sfere at `/sfere` use Supabase for sign-in, the points ledger, invites and Squares.
+The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (`/squares`) and Sfere (`/sfere`). They use Supabase for sign-in, the points ledger, invites, Squares and posts.
 Until `config.js` has real values, it runs in **preview mode**: one invite-only account (`preview` in `config.js`) whose email and access code are stored as SHA-256 hashes. Its balance lives in that browser only. Anyone else sees "invite-only for now". This is a front door, not security: everything runs in the browser and can be bypassed.
 
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
 2. Open **SQL Editor → New query**, paste all of `001_points.sql`, and click **Run**.
-3. Do the same with `002_sfere_invites.sql`.
+3. Do the same with `002_sfere_invites.sql`, then `003_line.sql`.
 4. QÜBE is invite-only, so create the first invite and use it to sign up yourself:
 
    ```sql
@@ -34,7 +34,7 @@ Supabase emails a sign-in link by default. The wallet asks for a code.
 In **Authentication → URL Configuration**:
 
 - **Site URL:** `https://luna-zeta-swart.vercel.app`
-- **Redirect URLs:** add `https://luna-zeta-swart.vercel.app/wallet`
+- **Redirect URLs:** add `https://luna-zeta-swart.vercel.app/points`
 
 ## 4. Connect the site
 
@@ -80,3 +80,12 @@ For real signups, connect an email provider in **Authentication → Emails → S
   | 4+ | Everyone deeper | nothing | 0 |
 
   Each level pays a tenth of the level above. Everyone has 10 invites, so each level's maximum total equals the one above it, and the whole tree is capped. Nobody pays to join, so rewards only come from real people signing up.
+
+## How the Line works
+
+- Members can post text, one image or one GIF (or text with one of them), up to 500 characters. Replies are posts under a post, like threads.
+- Anyone can read the Line. Only members can post, reply and like.
+- Posting, replying and liking earn nothing. A post's author earns **1 point for every like** it gets. If someone takes their like back, that point goes too.
+- You can't like your own post, and each person can like a post once.
+- Images are resized in the browser to 1,600 px before upload. GIFs upload as they are, up to 5 MB, so they keep moving. Files go to the public `line-media` storage bucket in a folder named after the uploader, and a post can only use its author's own uploads.
+- Spam brake: 30 posts and replies an hour per member.
