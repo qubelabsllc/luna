@@ -129,14 +129,6 @@
     touch-action: none;
   }
   .stage canvas.dragging { cursor: grabbing; }
-  .stage .legend {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    border-top: 1px solid var(--line);
-    padding-top: 14px;
-  }
 
   /* Work */
   .work { padding-block: 32px 120px; }
@@ -210,10 +202,6 @@
 
     <div class="stage">
       <canvas id="cube" tabindex="0" aria-label="A 3 by 3 by 3 cube that turns its layers and opens to reveal its core. Drag to rotate, click to open."></canvas>
-      <div class="legend mono">
-        <span>3 × 3 × 3 · 27 units · 1 core</span>
-        <span>Drag to turn · Click to open</span>
-      </div>
     </div>
   </section>
 
