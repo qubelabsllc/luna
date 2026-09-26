@@ -1,7 +1,7 @@
 # QÜBE wallet: Supabase setup
 
 The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (`/squares`) and Sfere (`/sfere`). They use Supabase for sign-in, the points ledger, invites, Squares and posts.
-Until `config.js` has real values, it runs in **preview mode**: one invite-only account (`preview` in `config.js`) whose email and access code are stored as SHA-256 hashes. Its balance lives in that browser only. Anyone else sees "invite-only for now". This is a front door, not security: everything runs in the browser and can be bypassed.
+Until `config.js` has real values, it runs in **preview mode**: one invite-only account (`preview` in `config.js`) whose email and password are stored as SHA-256 hashes. Its balance lives in that browser only. Anyone else sees "invite-only for now". This is a front door, not security: everything runs in the browser and can be bypassed.
 
 ## 1. Create the project
 
@@ -15,35 +15,21 @@ Until `config.js` has real values, it runs in **preview mode**: one invite-only 
 
    After that, every member gets 10 invite codes on their profile.
 
-## 2. Send a 6-digit code instead of a link
+## 2. Turn off email confirmation
 
-Supabase emails a sign-in link by default. The wallet asks for a code.
+Members sign up with an invite code, a handle, their email and a password. No emails are sent, so there is nothing to configure for email yet.
 
-1. Go to **Authentication → Emails → Templates**.
-2. In both **Magic Link** and **Confirm signup**, put the code in the body, for example:
+1. Go to **Authentication → Sign In / Providers → Email**.
+2. Make sure **Email** is enabled, and switch **Confirm email** off. Save.
 
-   ```html
-   <h2>Your QÜBE code</h2>
-   <p style="font-size:28px;letter-spacing:6px">{{ .Token }}</p>
-   <p>It expires in an hour. If you didn't ask for it, ignore this email.</p>
-   ```
-
-## 3. Allow the site's address
-
-In **Authentication → URL Configuration**:
-
-- **Site URL:** `https://luna-zeta-swart.vercel.app`
-- **Redirect URLs:** add `https://luna-zeta-swart.vercel.app/points`
-
-## 4. Connect the site
+## 3. Connect the site
 
 In **Project Settings → API**, copy the **Project URL** and the **anon public** key into `workspace/qube/config.js`.
 Both are safe to publish. Row-level security and the database functions decide what a signed-in user can do.
 
-## 5. Before real users sign up: email sending
+## Later: email
 
-Supabase's built-in email service is for testing only. It sends very few emails per hour and may only deliver to your own team's addresses.
-For real signups, connect an email provider in **Authentication → Emails → SMTP Settings**. Resend is the simplest option: free tier, and it gives you SMTP settings to paste in.
+Password resets and email sign-in codes need a real email provider, because Supabase's built-in email is for testing only and won't let you edit templates. When you want them, connect one (Resend has a free tier) in **Authentication → Emails → SMTP Settings**.
 
 ## How points work
 

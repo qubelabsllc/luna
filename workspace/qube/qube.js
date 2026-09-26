@@ -113,8 +113,14 @@
       live: true,
       async hasSession() { return Boolean(check(await sb.auth.getSession()).session); },
       async checkInvite(code) { return check(await sb.rpc("check_invite", { p_code: code })); },
-      async sendCode(email) { check(await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: location.origin + "/points" } })); },
-      async verify(email, token) { check(await sb.auth.verifyOtp({ email, token, type: "email" })); },
+      async signUp(email, password) {
+        const data = check(await sb.auth.signUp({ email, password }));
+        if (!data.session) {
+          // Happens when Supabase still has "Confirm email" switched on.
+          throw new Error("Account created, but Supabase is waiting for an email confirmation. Turn off “Confirm email” in Supabase (Authentication → Sign In / Providers → Email), then sign in.");
+        }
+      },
+      async signIn(email, password) { check(await sb.auth.signInWithPassword({ email, password })); },
       async wallet() { const rows = check(await sb.rpc("my_wallet")); return rows && rows[0] ? rows[0] : null; },
       async claimHandle(handle, invite) { check(await sb.rpc("claim_handle", { p_handle: handle, p_invite: invite || "" })); },
       async spin() { return check(await sb.rpc("spin"))[0]; },
@@ -172,15 +178,12 @@
       live: false,
       async hasSession() { refresh(); return Boolean(s.email && s.handle); },
       async checkInvite() { return false; },
-      async sendCode(email) {
-        await wait(400);
-        if ((await sha256(email.trim().toLowerCase())) !== invite.emailSha256) {
-          throw new Error("QÜBE is invite-only for now. Public signups open soon.");
-        }
-      },
-      async verify(email, token) {
+      async signUp() { throw new Error("Invites open when QÜBE launches. Members can sign in."); },
+      async signIn(email, password) {
         await wait(300);
-        if ((await sha256(token)) !== invite.codeSha256) throw new Error("That code isn't right.");
+        if ((await sha256(email.trim().toLowerCase())) !== invite.emailSha256 || (await sha256(password)) !== invite.codeSha256) {
+          throw new Error("That email and password don't match.");
+        }
         refresh();
         s.email = email;
         if (!s.handle) { s.handle = invite.handle; s.joined = new Date().toISOString(); }
