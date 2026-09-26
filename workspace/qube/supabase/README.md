@@ -1,12 +1,12 @@
 # QÜBE wallet: Supabase setup
 
 The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (`/squares`) and Sfere (`/sfere`). They use Supabase for sign-in, the points ledger, invites, Squares and posts.
-Until `config.js` has real values, it runs in **preview mode**: one invite-only account (`preview` in `config.js`) whose email and password are stored as SHA-256 hashes. Its balance lives in that browser only. Anyone else sees "invite-only for now". This is a front door, not security: everything runs in the browser and can be bypassed.
+`config.js` holds the project URL and publishable key. Without them the pages render but nobody can sign in.
 
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
-2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go: points, spins, invites, Squares, the Line and its image storage. (`001`–`003` are the same SQL split into steps, kept for reference.)
+2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`004` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
 3. QÜBE is invite-only, so create the first invite and use it to sign up yourself. Pick your own code and keep it private (this repo is public):
 
    ```sql
@@ -54,7 +54,7 @@ Password resets and email sign-in codes need a real email provider, because Supa
 
 - Signing up needs an unused invite code. Codes are single-use.
 - Every new member gets 1 Square to place anywhere open on the Sfere. Placing is permanent.
-- The Sfere is cut into 1,243 bands of latitude, each 10 miles tall, and each band into Squares about 10 miles wide: **1,970,466 Squares** in all. `sfere_cols()` in SQL and `grid` in `qube.js` hold the same math.
+- The Sfere is a cube inflated into a sphere. Each of the 6 faces is cut into 573 × 573 Squares, so rows and columns run straight: **1,969,974 Squares**, averaging 10 × 10 miles. `sfere_cell()` in SQL and `grid` in `qube.js` hold the same math.
 - Referral rewards are paid when an invited person finishes signing up:
 
   | Level | Who | Reward | Most you can earn |
@@ -74,3 +74,25 @@ Password resets and email sign-in codes need a real email provider, because Supa
 - You can't like your own post, and each person can like a post once.
 - Images are resized in the browser to 1,600 px before upload. GIFs upload as they are, up to 5 MB, so they keep moving. Files go to the public `line-media` storage bucket in a folder named after the uploader, and a post can only use its author's own uploads.
 - Spam brake: 30 posts and replies an hour per member.
+
+## Onboarding
+
+After signing up with an invite, every member completes their profile: a unique username, a **color** (permanent: it colors their avatar and every Square they own), their birthday (13 or older) and gender. Birthday and gender are private to the member.
+
+## Square types
+
+Every Square gets a type when it's placed, and the type is permanent.
+
+| Type | What it does |
+|---|---|
+| Residential | Where the member's agent will live. Decorating comes later. |
+| Industrial | A points mine: 1 point per full day, paid out when the member opens QÜBE (`collect_mines()`). |
+| Social | Holds 9 top-level posts. Members need Social Squares to post on the Line; replies don't use slots. Posts fill Social Squares in the order they were placed, and each one shows its posts in a 3 × 3 grid. |
+
+## The Sfere market
+
+For now the market sells one thing: a new Square for **100 points** (`buy_square()`). The points leave circulation and the member gets a Square to place.
+
+## $POINTS stats
+
+`points_stats()` is public: total supply, minted, spent, holders, 24-hour activity, mines, and 30 days of supply history. `my_points_series()` gives a member their own 30-day balance history.

@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Sfere · QÜBE</title>
-<meta name="description" content="The Sfere: a digital globe for agents, cut into 1,970,466 Squares of 10 × 10 miles.">
+<meta name="description" content="The Sfere: a digital globe for agents, cut into 1,969,974 Squares of about 10 × 10 miles.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#ffffff">
 <link rel="stylesheet" href="/qube.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
 <style>
   :root {
     color-scheme: light;
@@ -30,98 +30,87 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; overflow: hidden;
-  }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; overflow: hidden; }
   a { color: inherit; }
+  button { font: inherit; color: inherit; }
   :focus-visible { outline: 1px solid var(--accent); outline-offset: 4px; }
   .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-  .u { position: relative; display: inline-block; }
-  .u::before, .u::after { content: ""; position: absolute; top: -0.08em; width: 0.1em; height: 0.1em; border-radius: 50%; background: var(--accent); }
-  .u::before { left: 22%; }
-  .u::after { right: 22%; }
 
   #globe { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
   #globe.dragging { cursor: grabbing; }
   #globe.pointing { cursor: pointer; }
 
-  nav.top {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 2;
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: calc(28px + env(safe-area-inset-top, 0px)) var(--gutter) 28px;
-    pointer-events: none;
-  }
-  nav.top > * { pointer-events: auto; }
-  .mark { font: 500 15px/1 var(--display); letter-spacing: 0.18em; text-decoration: none; }
-  .nav-right { display: flex; align-items: center; gap: 20px; }
-  .nav-right a { text-decoration: none; }
-  .nav-right a:hover { color: var(--ink); }
-  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; background: rgba(255,255,255,0.8); }
-
-  .title {
-    position: fixed; z-index: 2; left: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px));
-    pointer-events: none;
-  }
+  .title { position: fixed; z-index: 2; left: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px)); pointer-events: none; }
   .title h1 { margin: 10px 0 0; font: 200 clamp(36px, 5vw, 64px)/1 var(--display); }
   .title p { margin: 12px 0 0; max-width: 30ch; color: var(--muted); font-size: 15px; }
-
-  .scale {
-    position: fixed; z-index: 2; right: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px));
-    text-align: right; display: flex; flex-direction: column; gap: 6px; pointer-events: none;
-  }
+  .scale { position: fixed; z-index: 2; right: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px)); text-align: right; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
   .scale b { font: 200 28px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .legend { position: fixed; z-index: 2; right: var(--gutter); bottom: calc(56px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 14px; pointer-events: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; display: inline-block; box-shadow: inset 0 0 0 1px var(--ink); }
+  .legend i.res { background: var(--ink); }
+  .legend i.ind { background: repeating-linear-gradient(45deg, var(--ink) 0 2px, #fff 2px 4px); }
+  .legend i.soc { background: linear-gradient(var(--ink), var(--ink)) 33% 0 / 1px 100% no-repeat, linear-gradient(var(--ink), var(--ink)) 66% 0 / 1px 100% no-repeat, linear-gradient(var(--ink), var(--ink)) 0 33% / 100% 1px no-repeat, linear-gradient(var(--ink), var(--ink)) 0 66% / 100% 1px no-repeat, #fff; }
 
   .card {
     position: fixed; z-index: 3; left: var(--gutter); bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-    width: min(380px, calc(100vw - 2 * var(--gutter)));
-    background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--line); border-radius: 6px; padding: 20px;
+    width: min(400px, calc(100vw - 2 * var(--gutter))); max-height: calc(100svh - 190px); overflow-y: auto;
+    background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: 8px; padding: 20px;
     display: flex; flex-direction: column; gap: 12px;
   }
   .card h2 { margin: 0; font: 300 24px/1.1 var(--display); font-variant-numeric: tabular-nums; }
   .card .sub { color: var(--muted); font-size: 14px; }
   .card .status { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
-  .dot.open { background: #fff; box-shadow: inset 0 0 0 1.5px var(--ink); }
-  .dot.mine { background: var(--accent); }
-  .dot.taken { background: var(--muted); }
+  .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; background: var(--line); }
+  .sw.open { background: #fff; box-shadow: inset 0 0 0 1.5px var(--ink); }
   .card .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-  .btn {
-    border: 0; border-radius: 2px; background: var(--ink); color: var(--bg); padding: 12px 18px;
-    font: 500 14px/1 var(--body); cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block;
-  }
+  .btn { border: 0; border-radius: 999px; background: var(--ink); color: #fff; padding: 12px 18px; font: 500 14px/1 var(--body); cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; }
   .btn:hover:not(:disabled) { background: var(--accent); }
   .btn:disabled { opacity: 0.35; cursor: default; }
   .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
   .btn.ghost:hover:not(:disabled) { background: var(--faint); }
-  .card .err { color: #c2261d; font-size: 14px; min-height: 0; }
-  .help { position: fixed; z-index: 2; right: var(--gutter); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); text-align: right; pointer-events: none; }
+  .card .err { color: #c2261d; font-size: 14px; }
+  .card .err:empty { display: none; }
 
-  .toast {
-    position: fixed; z-index: 4; left: 50%; top: calc(28px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
-    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px;
-    opacity: 0; transition: opacity 0.2s; pointer-events: none;
-  }
+  .kinds { display: flex; flex-direction: column; gap: 8px; }
+  .kind { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; }
+  .kind:hover { border-color: var(--muted); }
+  .kind[aria-checked="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .kind b { font-weight: 600; font-size: 15px; display: block; }
+  .kind span { font-size: 13px; color: var(--muted); display: block; line-height: 1.4; }
+  .kind svg { width: 34px; height: 34px; }
+
+  .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .slot { aspect-ratio: 1 / 1; border-radius: 3px; overflow: hidden; background: var(--faint); display: block; text-decoration: none; position: relative; }
+  .slot.empty { background: #fff; box-shadow: inset 0 0 0 1px dashed var(--line); outline: 1px dashed var(--line); outline-offset: -1px; }
+  .slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .slot p { margin: 0; padding: 8px; font-size: 11.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; color: #fff; }
+  .slot:hover { filter: brightness(1.05); }
+  .price { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .price b { font: 300 22px/1 var(--display); font-variant-numeric: tabular-nums; }
+
+  .help { position: fixed; z-index: 2; right: var(--gutter); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); text-align: right; pointer-events: none; }
+  .toast { position: fixed; z-index: 40; left: 50%; top: calc(80px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
   .toast.show { opacity: 1; }
   .fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
 
-  @media (max-width: 720px) {
-    .title p, .help { display: none; }
+  @media (max-width: 760px) {
+    .title p, .help, .legend { display: none; }
     .title, .scale { top: calc(72px + env(safe-area-inset-top, 0px)); }
-    .card { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
     .scale b { font-size: 20px; }
     .title h1 { font-size: 32px; }
+    .card { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); max-height: calc(100svh - 250px); }
   }
 </style>
 </head>
 <body>
-<canvas id="globe" aria-label="The Sfere, a 3D globe divided into 10 by 10 mile Squares. Drag to turn, scroll or pinch to zoom, click a Square to select it."></canvas>
+<canvas id="globe" aria-label="The Sfere, a 3D globe divided into Squares of about 10 by 10 miles. Drag to turn, scroll or pinch to zoom, click a Square to select it."></canvas>
 
 <div class="title">
   <div class="mono">The Sfere</div>
   <h1>Sfere</h1>
-  <p>A digital globe where agents live, work and meet. Every Square is 10 × 10 miles and belongs to one owner.</p>
+  <p>A digital globe where agents live, work and meet. Every Square is about 10 × 10 miles and belongs to one owner.</p>
 </div>
 
 <div class="scale mono">
@@ -131,14 +120,16 @@
 </div>
 
 <section class="card" id="card" aria-live="polite">
-  <div class="mono" id="card-eyebrow">Your Squares</div>
+  <div class="mono" id="card-eyebrow">The Sfere</div>
   <h2 id="card-title">Loading…</h2>
   <div class="sub" id="card-sub"></div>
-  <div class="status" id="card-status" hidden><span class="dot" id="card-dot"></span><span id="card-status-text"></span></div>
+  <div class="status" id="card-status" hidden><span class="sw" id="card-dot"></span><span id="card-status-text"></span></div>
+  <div id="card-body"></div>
   <div class="err" id="card-err" role="alert"></div>
   <div class="btns" id="card-btns"></div>
 </section>
 
+<div class="legend mono"><span><i class="res"></i>Residential</span><span><i class="ind"></i>Industrial</span><span><i class="soc"></i>Social</span></div>
 <div class="help mono">Drag to turn · Scroll to zoom · Click a Square</div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -152,7 +143,7 @@
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
-  const { api, grid, live } = window.QUBE;
+  const { api, grid, KINDS } = window.QUBE;
   const fmt = new Intl.NumberFormat("en-US");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const DEG = Math.PI / 180;
@@ -167,46 +158,49 @@
   // ---------------------------------------------------------------- scene
   const canvas = $("globe");
   let renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  } catch {
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); }
+  catch {
     document.body.insertAdjacentHTML("beforeend", '<div class="fallback">The Sfere needs WebGL, which this browser has turned off.</div>');
     return;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const css = getComputedStyle(document.documentElement);
-  const color = (name) => new THREE.Color(css.getPropertyValue(name).trim());
+  const color = (v) => new THREE.Color(v.startsWith("--") ? css.getPropertyValue(v).trim() : v);
   renderer.setClearColor(color("--bg"));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.0005, 100);
-
-  // Grid columns per row as a texture, so the shader uses exactly the same
-  // integers as the database.
-  const colsData = new Float32Array(grid.ROWS);
-  for (let r = 0; r < grid.ROWS; r++) colsData[r] = grid.cols(r);
-  const colsTex = new THREE.DataTexture(colsData, grid.ROWS, 1, THREE.RedFormat, THREE.FloatType);
-  colsTex.needsUpdate = true;
 
   const landCanvas = document.createElement("canvas");
   landCanvas.width = 4096; landCanvas.height = 2048;
   const landTex = new THREE.CanvasTexture(landCanvas);
   landTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-  const MAX_SQ = 64;
+  // GLSL copy of the cube grid in qube.js.
+  const GRID_GLSL = `
+    const float QN = ${grid.N}.0;
+    const float QPI4 = 0.7853981633974483;
+    void cubeFace(vec3 p, out float face, out vec3 n, out vec3 r, out vec3 t) {
+      vec3 ap = abs(p);
+      if (ap.x >= ap.y && ap.x >= ap.z) {
+        if (p.x > 0.0) { face = 0.0; n = vec3(1,0,0); r = vec3(0,0,-1); t = vec3(0,1,0); }
+        else           { face = 1.0; n = vec3(-1,0,0); r = vec3(0,0,1); t = vec3(0,1,0); }
+      } else if (ap.y >= ap.z) {
+        if (p.y > 0.0) { face = 2.0; n = vec3(0,1,0); r = vec3(1,0,0); t = vec3(0,0,-1); }
+        else           { face = 3.0; n = vec3(0,-1,0); r = vec3(1,0,0); t = vec3(0,0,1); }
+      } else {
+        if (p.z > 0.0) { face = 4.0; n = vec3(0,0,1); r = vec3(1,0,0); t = vec3(0,1,0); }
+        else           { face = 5.0; n = vec3(0,0,-1); r = vec3(-1,0,0); t = vec3(0,1,0); }
+      }
+    }`;
+
   const uniforms = {
     uLand: { value: landTex },
-    uCols: { value: colsTex },
-    uRows: { value: grid.ROWS },
     uOcean: { value: color("--ocean") },
     uLandColor: { value: color("--land") },
     uInk: { value: color("--ink") },
     uAccent: { value: color("--accent") },
     uHover: { value: new THREE.Vector2(-1, -1) },
     uSel: { value: new THREE.Vector2(-1, -1) },
-    uMine: { value: Array.from({ length: MAX_SQ }, () => new THREE.Vector2(-1, -1)) },
-    uMineN: { value: 0 },
-    uTaken: { value: Array.from({ length: MAX_SQ }, () => new THREE.Vector2(-1, -1)) },
-    uTakenN: { value: 0 },
     uLight: { value: new THREE.Vector3(0.4, 0.6, 1).normalize() },
   };
 
@@ -225,68 +219,44 @@
       fragmentShader: `
         precision highp float;
         uniform sampler2D uLand;
-        uniform sampler2D uCols;
-        uniform float uRows;
         uniform vec3 uOcean, uLandColor, uInk, uAccent, uLight;
         uniform vec2 uHover, uSel;
-        uniform vec2 uMine[${MAX_SQ}];
-        uniform int uMineN;
-        uniform vec2 uTaken[${MAX_SQ}];
-        uniform int uTakenN;
         varying vec3 vPos;
         varying vec3 vViewNormal;
-
-        float lineMask(float f, float w) {           // f in [0,1) within a cell; w = pixel width in cell units
-          float d = min(f, 1.0 - f);
-          return 1.0 - smoothstep(0.0, w, d);
-        }
+        ${GRID_GLSL}
+        float lineMask(float f, float w) { float d = min(f, 1.0 - f); return 1.0 - smoothstep(0.0, w, d); }
         void main() {
           vec3 p = normalize(vPos);
           float lat = degrees(asin(clamp(p.y, -1.0, 1.0)));
           float lon = degrees(atan(-p.z, p.x));
 
-          float dlat = 180.0 / uRows;
-          float ry = (lat + 90.0) / dlat;
-          float row = clamp(floor(ry), 0.0, uRows - 1.0);
-          float n = texelFetch(uCols, ivec2(int(row), 0), 0).r;
-          float w = 360.0 / n;
-          float cx = (lon + 180.0) / w;
-          float col = clamp(floor(cx), 0.0, n - 1.0);
-
-          // Derivatives, with the ±180° seam handled.
-          float dLon = min(fwidth(lon), fwidth(mod(lon + 360.0, 360.0)));
-          float pxY = fwidth(ry);
-          float pxX = dLon / w;
-
-          // Base: ocean and land.
           float land = texture(uLand, vec2((lon + 180.0) / 360.0, (lat + 90.0) / 180.0)).r;
           vec3 c = mix(uOcean, uLandColor, smoothstep(0.35, 0.65, land));
 
-          // Graticule every 15° for the far view.
-          float gLat = (lat + 90.0) / 15.0, gLon = (lon + 180.0) / 15.0;
-          float grat = max(lineMask(fract(gLat), fwidth(gLat) * 0.8), lineMask(fract(gLon), min(fwidth(gLon), fwidth(mod(gLon + 24.0, 24.0))) * 0.8));
-          c = mix(c, uInk, grat * 0.06);
+          // Faint cube edges: the six faces of the Sfere.
+          float face; vec3 n, r, t;
+          cubeFace(p, face, n, r, t);
+          float d = dot(p, n);
+          float gi = (atan(dot(p, r) / d) + QPI4) / (2.0 * QPI4) * QN;
+          float gj = (atan(dot(p, t) / d) + QPI4) / (2.0 * QPI4) * QN;
+          float wi = min(fwidth(gi), 0.5), wj = min(fwidth(gj), 0.5);
 
-          // The 10-mile grid fades in once a Square is a few pixels wide.
-          float cellPx = 1.0 / max(pxY, 1e-6);
+          // Coarse guide grid (every 57.3 Squares ≈ 10 per face edge) for the far view.
+          float ci = gi / 57.3, cj = gj / 57.3;
+          float coarse = max(lineMask(fract(ci), min(fwidth(ci), 0.5) * 0.8), lineMask(fract(cj), min(fwidth(cj), 0.5) * 0.8));
+          c = mix(c, uInk, coarse * 0.06);
+
+          // The Square grid fades in once a Square is a few pixels wide.
+          float cellPx = 1.0 / max(wj, 1e-6);
           float gridA = smoothstep(3.0, 9.0, cellPx);
-          float gl = max(lineMask(fract(ry), pxY * 0.7), lineMask(fract(cx), pxX * 0.7));
+          float gl = max(lineMask(fract(gi), wi * 0.7), lineMask(fract(gj), wj * 0.7));
           c = mix(c, uInk, gl * gridA * 0.16);
 
-          vec2 cell = vec2(row, col);
-          for (int i = 0; i < ${MAX_SQ}; i++) {
-            if (i >= uTakenN) break;
-            if (cell == uTaken[i]) c = mix(c, uInk, 0.28);
-          }
-          for (int i = 0; i < ${MAX_SQ}; i++) {
-            if (i >= uMineN) break;
-            if (cell == uMine[i]) c = uAccent;
-          }
-          float edge = max(lineMask(fract(ry), pxY * 1.6), lineMask(fract(cx), pxX * 1.6));
+          vec2 cell = vec2(face * QN + floor(gj), floor(gi));
+          float edge = max(lineMask(fract(gi), wi * 1.6), lineMask(fract(gj), wj * 1.6));
           if (cell == uHover) c = mix(c, uInk, max(0.08, edge * 0.9));
           if (cell == uSel) c = mix(mix(c, uAccent, 0.18), uAccent, edge);
 
-          // Soft light so it reads as a ball, and a faint rim.
           float lam = dot(normalize(vViewNormal), uLight) * 0.5 + 0.5;
           c *= mix(0.9, 1.0, lam);
           float rim = pow(1.0 - max(dot(normalize(vViewNormal), vec3(0.0, 0.0, 1.0)), 0.0), 3.0);
@@ -297,7 +267,6 @@
   );
   scene.add(globe);
 
-  // Halo: a thin ring just outside the silhouette.
   const halo = new THREE.Mesh(
     new THREE.SphereGeometry(1.012, 128, 64),
     new THREE.ShaderMaterial({
@@ -309,39 +278,117 @@
   );
   scene.add(halo);
 
-  // Markers so claimed Squares are findable from far away.
-  const markerGeo = new THREE.BufferGeometry();
-  const markerMat = new THREE.ShaderMaterial({
-    uniforms: { uAccent: uniforms.uAccent, uInk: uniforms.uInk, uAlpha: { value: 1 }, uDpr: { value: renderer.getPixelRatio() } },
+  // Claimed Squares: one tile each, in the owner's color. Tiles never shrink
+  // below a few pixels, so they stay squares when you zoom out.
+  const tileUniforms = {
+    uMinWorld: { value: 0.01 },
+    uPxWorld: { value: 0.001 },
+    uHover: uniforms.uHover,
+    uSel: uniforms.uSel,
+    uInk: uniforms.uInk,
+    uAccent: uniforms.uAccent,
+  };
+  const quad = new THREE.PlaneGeometry(1, 1);
+  // three.js fixes an instanced geometry's instance limit the first time it draws,
+  // so every data change gets a fresh geometry.
+  function freshTileGeo() {
+    const g = new THREE.InstancedBufferGeometry();
+    g.index = quad.index;
+    g.setAttribute("position", quad.attributes.position);
+    g.setAttribute("uv", quad.attributes.uv);
+    return g;
+  }
+  let tileGeo = freshTileGeo();
+  const tileMat = new THREE.ShaderMaterial({
+    uniforms: tileUniforms,
     vertexShader: `
-      attribute float mine;
-      varying float vMine;
-      varying float vFacing;
-      uniform float uDpr;
+      attribute vec3 aCenter, aR, aT, aColor;
+      attribute vec2 aSize, aCell;
+      attribute float aKind, aPosts;
+      uniform float uMinWorld, uPxWorld;
+      varying vec2 vUv;
+      varying vec3 vColor;
+      varying float vKind, vPosts, vPx;
+      varying vec2 vCell;
       void main() {
-        vMine = mine;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        vFacing = dot(normalize(normalMatrix * position), normalize(-mv.xyz));
-        gl_PointSize = (mine > 0.5 ? 10.0 : 6.0) * uDpr;
-        gl_Position = projectionMatrix * mv;
+        vec2 s = max(aSize, vec2(uMinWorld));
+        vec3 pos = aCenter * 1.0009 + position.x * s.x * aR + position.y * s.y * aT;
+        vUv = uv; vColor = aColor; vKind = aKind; vPosts = aPosts; vCell = aCell;
+        vPx = s.x / uPxWorld;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
       }`,
     fragmentShader: `
-      uniform vec3 uAccent, uInk;
-      uniform float uAlpha;
-      varying float vMine;
-      varying float vFacing;
+      precision highp float;
+      uniform vec2 uHover, uSel;
+      uniform vec3 uInk, uAccent;
+      varying vec2 vUv;
+      varying vec3 vColor;
+      varying float vKind, vPosts, vPx;
+      varying vec2 vCell;
       void main() {
-        vec2 q = gl_PointCoord - 0.5;
-        float d = length(q);
-        if (d > 0.5 || vFacing < 0.05) discard;
-        vec3 c = vMine > 0.5 ? uAccent : uInk;
-        float ring = vMine > 0.5 ? 1.0 : smoothstep(0.5, 0.42, d);
-        gl_FragColor = vec4(c, ring * uAlpha * smoothstep(0.05, 0.25, vFacing));
+        vec3 base = vColor;
+        vec3 soft = mix(vColor, vec3(1.0), 0.62);
+        float detail = smoothstep(10.0, 22.0, vPx);   // patterns only when the tile is big enough to read
+        vec3 c = base;
+        if (vKind < 0.5) {                              // residential: solid, with an inner frame
+          float f = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
+          c = mix(base, soft, detail * (1.0 - smoothstep(0.17, 0.19, f)) * smoothstep(0.12, 0.14, f));
+        } else if (vKind < 1.5) {                       // industrial: mine stripes
+          float s = step(0.5, fract((vUv.x + vUv.y) * 5.0));
+          c = mix(base, mix(base, soft, s), detail);
+        } else if (vKind < 2.5) {                       // social: 3 × 3 post slots
+          vec2 g = vUv * 3.0;
+          float slot = floor(g.x) + 3.0 * floor(3.0 - g.y);
+          vec3 fill = slot < vPosts ? base : soft;
+          // Interior dividers only: lines at 1/3 and 2/3.
+          float gl = max(1.0 - smoothstep(0.0, 0.05, min(abs(g.x - 1.0), abs(g.x - 2.0))),
+                         1.0 - smoothstep(0.0, 0.05, min(abs(g.y - 1.0), abs(g.y - 2.0))));
+          c = mix(mix(base, soft, 0.35), mix(fill, vec3(1.0), gl * 0.9), detail);
+        } else {                                        // not typed yet
+          c = mix(base, soft, 0.5);
+        }
+        // Edges, measured in screen pixels so they stay crisp at any zoom.
+        float e = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y)) * vPx;
+        c = mix(c, mix(base, uInk, 0.35), 1.0 - smoothstep(0.6, 1.4, e));
+        if (vCell == uHover) c = mix(c, uInk, 1.0 - smoothstep(1.4, 2.4, e));
+        if (vCell == uSel) c = mix(c, uAccent, 1.0 - smoothstep(2.0, 3.2, e));
+        gl_FragColor = vec4(c, 1.0);
       }`,
-    transparent: true, depthWrite: false,
   });
-  const markers = new THREE.Points(markerGeo, markerMat);
-  scene.add(markers);
+  const tiles = new THREE.Mesh(tileGeo, tileMat);
+  tiles.frustumCulled = false;
+  scene.add(tiles);
+
+  const KIND_ID = { residential: 0, industrial: 1, social: 2 };
+  function setTiles(list) {
+    const n = list.length;
+    tileGeo.dispose();
+    tileGeo = freshTileGeo();
+    tiles.geometry = tileGeo;
+    const A = (k) => new Float32Array(n * k);
+    const center = A(3), R = A(3), T = A(3), size = A(2), cell = A(2), col = A(3), kind = A(1), posts = A(1);
+    list.forEach((s, i) => {
+      const c = grid.dir(s.row, s.col);
+      const l = grid.dir(s.row, s.col, 0, 0.5), r = grid.dir(s.row, s.col, 1, 0.5);
+      const b = grid.dir(s.row, s.col, 0.5, 0), t = grid.dir(s.row, s.col, 0.5, 1);
+      const ru = [r[0] - l[0], r[1] - l[1], r[2] - l[2]], tv = [t[0] - b[0], t[1] - b[1], t[2] - b[2]];
+      const lu = Math.hypot(...ru), lv = Math.hypot(...tv);
+      center.set(c, i * 3);
+      R.set(ru.map((x) => x / lu), i * 3);
+      T.set(tv.map((x) => x / lv), i * 3);
+      size.set([lu, lv], i * 2);
+      cell.set([s.row, s.col], i * 2);
+      const cc = new THREE.Color(s.color || "#9aa0aa");
+      col.set([cc.r, cc.g, cc.b], i * 3);
+      kind[i] = s.kind in KIND_ID ? KIND_ID[s.kind] : 3;
+      posts[i] = s.posts || 0;
+    });
+    const set = (name, arr, k) => tileGeo.setAttribute(name, new THREE.InstancedBufferAttribute(arr, k));
+    set("aCenter", center, 3); set("aR", R, 3); set("aT", T, 3); set("aSize", size, 2);
+    set("aCell", cell, 2); set("aColor", col, 3); set("aKind", kind, 1); set("aPosts", posts, 1);
+    tileGeo.instanceCount = n;
+  }
+  setTiles([]);
 
   function toVec(lat, lon, r = 1) {
     const la = lat * DEG, lo = lon * DEG;
@@ -349,69 +396,70 @@
   }
 
   // ------------------------------------------------------------------ land
-  fetch("/data/land-50m.json")
-    .then((r) => r.json())
-    .then((topo) => {
-      const land = topojson.feature(topo, topo.objects.land);
-      const ctx = landCanvas.getContext("2d");
-      const W = landCanvas.width, H = landCanvas.height;
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, H);
-      const proj = d3.geoEquirectangular().scale(W / (2 * Math.PI)).translate([W / 2, H / 2]).precision(0.1);
-      ctx.fillStyle = "#fff";
-      ctx.beginPath();
-      d3.geoPath(proj, ctx)(land);
-      ctx.fill();
-      landTex.needsUpdate = true;
-    })
-    .catch(() => {});
+  fetch("/data/land-50m.json").then((r) => r.json()).then((topo) => {
+    const land = topojson.feature(topo, topo.objects.land);
+    const ctx = landCanvas.getContext("2d");
+    const W = landCanvas.width, H = landCanvas.height;
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+    const proj = d3.geoEquirectangular().scale(W / (2 * Math.PI)).translate([W / 2, H / 2]).precision(0.1);
+    ctx.fillStyle = "#fff"; ctx.beginPath(); d3.geoPath(proj, ctx)(land); ctx.fill();
+    landTex.needsUpdate = true;
+  }).catch(() => {});
 
   // --------------------------------------------------------------- camera
-  // The camera looks straight down at (lat, lon) from height `alt` above the surface.
   const view = { lat: 22, lon: -30, alt: 3.1 };
   const MIN_ALT = 0.02, MAX_ALT = 4;
   let vel = { lat: 0, lon: 0 }, flight = null, lastInteract = 0;
+  const radPerPx = () => (2 * view.alt * Math.tan((camera.fov * DEG) / 2)) / window.innerHeight;
 
   function applyCamera() {
     const d = 1 + view.alt;
     camera.position.copy(toVec(view.lat, view.lon, d));
-    const up = Math.abs(view.lat) > 89 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
-    camera.up.copy(up);
+    camera.up.set(0, 1, 0);
     camera.lookAt(0, 0, 0);
     camera.near = Math.max(0.0005, view.alt * 0.3);
     camera.far = d + 2;
     camera.updateProjectionMatrix();
-    const far = Math.min(1, Math.max(0, (view.alt - 0.12) / 0.4));
-    markerMat.uniforms.uAlpha.value = far;
+    const px = radPerPx();
+    tileUniforms.uPxWorld.value = px;
+    tileUniforms.uMinWorld.value = px * 7;   // tiles stay at least 7 px across
   }
-
   function resize() {
-    const w = window.innerWidth, h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
   }
   window.addEventListener("resize", resize);
   resize();
 
-  // Surface radians per screen pixel at the current height.
-  const radPerPx = () => (2 * view.alt * Math.tan((camera.fov * DEG) / 2)) / window.innerHeight;
-
   // --------------------------------------------------------------- picking
   const ray = new THREE.Raycaster();
-  function pick(clientX, clientY) {
-    const ndc = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
-    ray.setFromCamera(ndc, camera);
+  function pick(x, y) {
+    ray.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
     const o = ray.ray.origin, d = ray.ray.direction;
     const b = o.dot(d), c = o.dot(o) - 1, disc = b * b - c;
     if (disc < 0) return null;
     const t = -b - Math.sqrt(disc);
     if (t < 0) return null;
     const p = o.clone().addScaledVector(d, t).normalize();
-    const lat = Math.asin(p.y) / DEG, lon = Math.atan2(-p.z, p.x) / DEG;
-    return { lat, lon, ...grid.cellAt(lat, lon) };
+    return { lat: Math.asin(p.y) / DEG, lon: Math.atan2(-p.z, p.x) / DEG, ...grid.cellOfVec([p.x, p.y, p.z]) };
   }
-  const cellPx = () => (grid.DLAT * DEG) / radPerPx();
+  // A claimed tile under the pointer wins, even when it's drawn bigger than its Square.
+  function pickTile(x, y) {
+    const h = pick(x, y);
+    if (!h) return null;
+    const exact = byCell.get(h.row + "." + h.col);
+    if (exact || cellPx() > 7) return h;
+    const p = toVec(h.lat, h.lon);
+    let best = null, bestD = radPerPx() * 6;
+    for (const s of allSquares) {
+      const c = grid.dir(s.row, s.col);
+      const dd = Math.hypot(c[0] - p.x, c[1] - p.y, c[2] - p.z);
+      if (dd < bestD) { bestD = dd; best = s; }
+    }
+    return best ? { ...grid.center(best.row, best.col), row: best.row, col: best.col } : h;
+  }
+  const cellPx = () => (Math.PI / 2 / grid.N) / radPerPx();
 
   // ----------------------------------------------------------------- input
   const pointers = new Map();
@@ -421,7 +469,7 @@
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     flight = null;
     lastInteract = performance.now();
-    if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() };
+    if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, moved: 0 };
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), alt: view.alt };
@@ -433,8 +481,7 @@
     if (prev) { prev.x = e.clientX; prev.y = e.clientY; }
     if (pinch && pointers.size === 2) {
       const [a, b] = [...pointers.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      view.alt = clampAlt(pinch.alt * (pinch.d / Math.max(d, 1)));
+      view.alt = clampAlt(pinch.alt * (pinch.d / Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1)));
       return;
     }
     if (drag) {
@@ -443,7 +490,7 @@
       drag.x = e.clientX; drag.y = e.clientY;
       if (drag.moved > 4) canvas.classList.add("dragging");
       const k = radPerPx() / DEG;
-      const dLon = -dx * k / Math.max(0.2, Math.cos(view.lat * DEG));
+      const dLon = (-dx * k) / Math.max(0.2, Math.cos(view.lat * DEG));
       const dLat = dy * k;
       view.lon = wrapLon(view.lon + dLon);
       view.lat = clampLat(view.lat + dLat);
@@ -469,7 +516,6 @@
     flight = null;
     lastInteract = performance.now();
     const factor = Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0016));
-    // Zoom toward the cursor: nudge the view toward the point under it.
     const before = pick(e.clientX, e.clientY);
     view.alt = clampAlt(view.alt * factor);
     if (before && factor < 1) {
@@ -478,7 +524,7 @@
       view.lon = wrapLon(view.lon + shortLon(view.lon, before.lon) * t * 0.9);
     }
   }, { passive: false });
-
+  canvas.tabIndex = 0;
   canvas.addEventListener("keydown", (e) => {
     const step = (radPerPx() / DEG) * 60;
     if (e.key === "ArrowLeft") view.lon = wrapLon(view.lon - step);
@@ -488,7 +534,6 @@
     if (e.key === "+" || e.key === "=") view.alt = clampAlt(view.alt * 0.8);
     if (e.key === "-") view.alt = clampAlt(view.alt * 1.25);
   });
-  canvas.tabIndex = 0;
 
   const clampAlt = (a) => Math.min(MAX_ALT, Math.max(MIN_ALT, a));
   const clampLat = (l) => Math.min(89.5, Math.max(-89.5, l));
@@ -496,23 +541,17 @@
   const shortLon = (from, to) => ((((to - from + 180) % 360) + 360) % 360) - 180;
 
   function hover(x, y) {
-    if (cellPx() < 3) { uniforms.uHover.value.set(-1, -1); canvas.classList.remove("pointing"); return; }
-    const h = pick(x, y);
-    if (h) uniforms.uHover.value.set(h.row, h.col); else uniforms.uHover.value.set(-1, -1);
-    canvas.classList.toggle("pointing", Boolean(h));
+    const h = pickTile(x, y);
+    const show = h && (cellPx() >= 3 || byCell.has(h.row + "." + h.col));
+    if (show) uniforms.uHover.value.set(h.row, h.col); else uniforms.uHover.value.set(-1, -1);
+    canvas.classList.toggle("pointing", Boolean(show));
   }
-
   function click(x, y) {
-    const h = pick(x, y);
+    const h = pickTile(x, y);
     if (!h) return;
-    if (cellPx() < 6) {
-      // Too far to pick a single Square: fly down to it first.
-      flyTo(h.lat, h.lon, 0.06, () => select(h.row, h.col));
-    } else {
-      select(h.row, h.col);
-    }
+    if (byCell.has(h.row + "." + h.col) || cellPx() >= 6) return select(h.row, h.col);
+    flyTo(h.lat, h.lon, 0.06, () => select(h.row, h.col));   // too far to pick one Square: fly down first
   }
-
   function flyTo(lat, lon, alt, done) {
     if (reduce) { view.lat = lat; view.lon = lon; view.alt = alt; done && done(); return; }
     const from = { ...view };
@@ -522,34 +561,15 @@
   }
 
   // ------------------------------------------------------------------ data
-  let me = null, mine = [], taken = [], selected = null;
+  let me = null, allSquares = [], byCell = new Map(), selected = null;
 
   async function loadData() {
     const signedIn = await api.hasSession().catch(() => false);
     me = signedIn ? await api.wallet().catch(() => null) : null;
-    const all = await api.sfereSquares().catch(() => []);
-    mine = me ? all.filter((s) => s.handle === me.handle) : [];
-    taken = all.filter((s) => !me || s.handle !== me.handle);
-    $("claimed-count").textContent = `${fmt.format(all.length)} claimed`;
-    pushSquares();
-  }
-
-  function pushSquares() {
-    uniforms.uMineN.value = Math.min(MAX_SQ, mine.length);
-    mine.slice(0, MAX_SQ).forEach((s, i) => uniforms.uMine.value[i].set(s.row, s.col));
-    uniforms.uTakenN.value = Math.min(MAX_SQ, taken.length);
-    taken.slice(0, MAX_SQ).forEach((s, i) => uniforms.uTaken.value[i].set(s.row, s.col));
-    const pos = [], flag = [];
-    for (const [list, f] of [[taken, 0], [mine, 1]]) {
-      for (const s of list) {
-        const c = grid.center(s.row, s.col);
-        pos.push(...toVec(c.lat, c.lon, 1.001).toArray());
-        flag.push(f);
-      }
-    }
-    markerGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    markerGeo.setAttribute("mine", new THREE.Float32BufferAttribute(flag, 1));
-    markerGeo.computeBoundingSphere();
+    allSquares = await api.sfereSquares().catch(() => []);
+    byCell = new Map(allSquares.map((s) => [s.row + "." + s.col, s]));
+    $("claimed-count").textContent = `${fmt.format(allSquares.length)} claimed`;
+    setTiles(allSquares);
   }
 
   // ------------------------------------------------------------------ card
@@ -559,7 +579,7 @@
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
   }
   function button(label, onClick, ghost, href) {
     const b = document.createElement(href ? "a" : "button");
@@ -568,15 +588,48 @@
     if (href) b.href = href; else { b.type = "button"; b.addEventListener("click", onClick); }
     return b;
   }
-  function setCard({ eyebrow, title, sub, status, dot, buttons = [] }) {
+  function setCard({ eyebrow, title, sub, status, swatch, body, buttons = [] }) {
     $("card-eyebrow").textContent = eyebrow;
     $("card-title").textContent = title;
     $("card-sub").textContent = sub || "";
     $("card-status").hidden = !status;
     $("card-status-text").textContent = status || "";
-    $("card-dot").className = "dot " + (dot || "");
+    const sw = $("card-dot");
+    sw.className = "sw" + (swatch === "open" ? " open" : "");
+    sw.style.background = swatch && swatch !== "open" ? swatch : "";
+    $("card-body").replaceChildren(...(body ? [body] : []));
     $("card-err").textContent = "";
     $("card-btns").replaceChildren(...buttons);
+  }
+  const available = () => (me ? Number(me.squares_available) : 0);
+  const price = 100;
+
+  function kindIcon(kind, c) {
+    const s = `<svg viewBox="0 0 34 34"><rect x="1" y="1" width="32" height="32" fill="${c}" stroke="#111216" stroke-opacity=".35"/>`;
+    if (kind === "residential") return s + `<rect x="8" y="8" width="18" height="18" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2"/></svg>`;
+    if (kind === "industrial") return s + `<path d="M1 11 11 1M1 21 21 1M1 31 31 1M11 33 33 11M21 33 33 21" stroke="#fff" stroke-opacity=".6" stroke-width="3"/></svg>`;
+    return s + `<path d="M11.7 1v32M22.3 1v32M1 11.7h32M1 22.3h32" stroke="#fff" stroke-width="1.6"/></svg>`;
+  }
+
+  // The type picker used when placing or typing a Square.
+  function kindPicker(onPick) {
+    const wrap = document.createElement("div");
+    wrap.className = "kinds";
+    wrap.setAttribute("role", "radiogroup");
+    wrap.setAttribute("aria-label", "Square type");
+    let chosen = null;
+    for (const k of ["residential", "industrial", "social"]) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "kind"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
+      b.innerHTML = kindIcon(k, (me && me.color) || "#3a3df5") + `<div><b>${KINDS[k].label}</b><span>${KINDS[k].blurb}</span></div>`;
+      b.addEventListener("click", () => {
+        chosen = k;
+        wrap.querySelectorAll(".kind").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        onPick(k);
+      });
+      wrap.append(b);
+    }
+    return wrap;
   }
 
   function idleCard() {
@@ -585,76 +638,140 @@
     if (location.hash) history.replaceState(null, "", location.pathname);
     if (!me) {
       return setCard({
-        eyebrow: "Invite only",
-        title: "Own a piece of the Sfere",
-        sub: "Every member gets one free Square. Invite people to earn more.",
+        eyebrow: "Invite only", title: "Own a piece of the Sfere",
+        sub: "Every member gets one free Square. Invite people or buy more with points.",
         buttons: [button("Sign in", null, false, "/points"), button("Join with an invite", null, true, "/join")],
       });
     }
-    const avail = Number(me.squares_available);
-    if (avail > 0) {
-      return setCard({
-        eyebrow: "@" + me.handle,
-        title: `${avail} Square${avail === 1 ? "" : "s"} to place`,
-        sub: "Zoom in and click any open Square to claim it. It's yours for good.",
-        buttons: mine.length ? [button("Fly to my Square", () => focusSquare(mine[0]), true)] : [],
-      });
+    if (!me.profile_complete) {
+      return setCard({ eyebrow: "@" + me.handle, title: "Finish your profile", sub: "Pick your color first. It's how your Squares look on the Sfere.", buttons: [button("Finish profile", null, false, "/points")] });
     }
+    const mine = allSquares.filter((s) => s.handle === me.handle);
+    const untyped = mine.filter((s) => !s.kind);
+    const avail = available();
+    const buttons = [];
+    if (untyped.length) buttons.push(button("Choose a type", () => focusSquare(untyped[0])));
+    else if (mine.length) buttons.push(button("Fly to my Squares", () => focusSquare(mine[0]), avail > 0));
+    buttons.push(button(`Buy a Square · ${price} pts`, marketCard, true));
     setCard({
       eyebrow: "@" + me.handle,
-      title: mine.length ? grid.label(mine[0].row, mine[0].col) : "No Squares yet",
-      sub: mine.length ? `${grid.coords(mine[0].row, mine[0].col)} · 100 sq mi` : "",
-      status: mine.length ? `You own ${mine.length} Square${mine.length === 1 ? "" : "s"}` : "",
-      dot: "mine",
-      buttons: mine.length ? [button("Fly to my Square", () => focusSquare(mine[0])), button("Invite for more", null, true, "/points")] : [],
+      title: avail > 0 ? `${avail} Square${avail === 1 ? "" : "s"} to place` : `You own ${mine.length} Square${mine.length === 1 ? "" : "s"}`,
+      sub: untyped.length ? "One of your Squares needs a type: Residential, Industrial or Social."
+        : avail > 0 ? "Zoom in and click any open Square to place it. Placing is permanent."
+        : `${fmt.format(Number(me.balance))} points in your wallet.`,
+      status: `${me.residential} residential · ${me.industrial} industrial · ${me.social} social`,
+      swatch: me.color,
+      buttons,
     });
   }
 
-  function select(row, col) {
+  function marketCard() {
+    const body = document.createElement("div");
+    body.className = "price";
+    body.innerHTML = `<span class="mono">Land · 1 Square</span><b>${price} pts</b>`;
+    const bal = Number(me.balance);
+    setCard({
+      eyebrow: "Sfere market", title: "Buy a Square",
+      sub: `You have ${fmt.format(bal)} points. After buying, pick any open Square on the Sfere and choose its type.`,
+      body,
+      buttons: [button(bal >= price ? "Buy for 100 points" : `Need ${fmt.format(price - bal)} more points`, buy), button("Back", selected ? () => select(selected.row, selected.col) : idleCard, true)],
+    });
+    if (bal < price) $("card-btns").firstChild.disabled = true;
+  }
+
+  async function buy() {
+    const b = $("card-btns").firstChild;
+    b.disabled = true; b.textContent = "Buying…";
+    try {
+      await api.buySquare();
+      await loadData();
+      QUBE.setNavUser(me);
+      toast("Bought. Pick an open Square to place it.");
+      selected ? select(selected.row, selected.col) : idleCard();
+    } catch (err) {
+      $("card-err").textContent = err.message;
+      b.disabled = false; b.textContent = "Buy for 100 points";
+    }
+  }
+
+  async function select(row, col) {
     selected = { row, col };
     uniforms.uSel.value.set(row, col);
     history.replaceState(null, "", "#" + grid.hash(row, col));
-    const owner = [...mine, ...taken].find((s) => s.row === row && s.col === col);
-    const base = { eyebrow: "Square", title: grid.label(row, col), sub: `${grid.coords(row, col)} · 10 × 10 mi` };
+    const owner = byCell.get(row + "." + col);
+    const base = { eyebrow: owner && owner.kind ? KINDS[owner.kind].label + " Square" : "Square", title: grid.label(row, col), sub: `${grid.coords(row, col)} · about 10 × 10 mi` };
     const close = button("Close", idleCard, true);
-    if (owner && mine.includes(owner)) {
-      return setCard({ ...base, status: "Yours", dot: "mine", buttons: [close] });
-    }
+
     if (owner) {
-      return setCard({ ...base, status: "Owned by @" + owner.handle, dot: "taken", buttons: [close] });
+      const isMine = me && owner.handle === me.handle;
+      const who = isMine ? "Yours" : "@" + owner.handle;
+      if (isMine && !owner.kind) {
+        let kind = null;
+        const confirm = button("Set type", async () => {
+          confirm.disabled = true;
+          try { await api.setSquareKind(row, col, kind); await loadData(); toast(`${KINDS[kind].label} Square set`); select(row, col); }
+          catch (err) { $("card-err").textContent = err.message; confirm.disabled = false; }
+        });
+        confirm.disabled = true;
+        return setCard({ ...base, status: "Yours · choose what this Square is. You can't change it later.", swatch: owner.color, body: kindPicker((k) => { kind = k; confirm.disabled = false; confirm.textContent = `Make it ${KINDS[k].label}`; }), buttons: [confirm, close] });
+      }
+      if (owner.kind === "social") {
+        const body = document.createElement("div");
+        body.className = "slots";
+        setCard({ ...base, status: `${who} · ${owner.posts} of 9 posts`, swatch: owner.color, body, buttons: [close] });
+        const posts = await api.squarePosts(row, col).catch(() => []);
+        for (let i = 0; i < 9; i++) {
+          const p = posts[i];
+          const a = document.createElement(p ? "a" : "span");
+          a.className = "slot" + (p ? "" : " empty");
+          if (p) {
+            a.href = "/line#p" + p.id;
+            a.style.background = owner.color;
+            if (p.media_url) { const img = document.createElement("img"); img.src = p.media_url; img.alt = p.body || "Post image"; img.loading = "lazy"; a.append(img); }
+            else { const t = document.createElement("p"); t.textContent = p.body; a.append(t); }
+            a.title = p.body || "Image post";
+          }
+          body.append(a);
+        }
+        return;
+      }
+      const extra = owner.kind === "industrial" ? " · mines 1 point a day" : owner.kind === "residential" ? " · agent home" : "";
+      return setCard({ ...base, status: who + extra, swatch: owner.color, buttons: [close] });
     }
-    if (!me) {
-      return setCard({ ...base, status: "Open", dot: "open", buttons: [button("Sign in to claim", null, false, "/points"), close] });
+
+    if (!me) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Sign in to claim", null, false, "/points"), close] });
+    if (!me.profile_complete) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Finish your profile", null, false, "/points"), close] });
+    if (available() <= 0) {
+      return setCard({ ...base, status: "Open · you have no Squares to place", swatch: "open", buttons: [button(`Buy one · ${price} pts`, marketCard), button("Invite to earn one", null, true, "/points?tab=invites"), close] });
     }
-    if (Number(me.squares_available) <= 0) {
-      return setCard({ ...base, status: "Open · you have no Squares to place", dot: "open", buttons: [button("Invite to earn one", null, false, "/points"), close] });
-    }
-    setCard({ ...base, status: "Open", dot: "open", buttons: [button("Claim this Square", () => confirmClaim(row, col)), close] });
+    let kind = null;
+    const place = button("Place Square", () => confirmPlace(row, col, kind));
+    place.disabled = true;
+    setCard({ ...base, status: "Open · choose a type to place it", swatch: "open", body: kindPicker((k) => { kind = k; place.disabled = false; place.textContent = `Place ${KINDS[k].label}`; }), buttons: [place, close] });
   }
 
-  function confirmClaim(row, col) {
+  function confirmPlace(row, col, kind) {
     setCard({
-      eyebrow: "Confirm",
-      title: grid.label(row, col),
-      sub: `${grid.coords(row, col)}. Claiming is permanent: this Square will be yours and can't be moved.`,
-      status: "Open", dot: "open",
-      buttons: [button("Yes, claim it", () => claim(row, col)), button("Back", () => select(row, col), true)],
+      eyebrow: "Confirm", title: grid.label(row, col),
+      sub: `${grid.coords(row, col)}. A ${KINDS[kind].label} Square, for good. Placing and type are permanent.`,
+      status: KINDS[kind].blurb, swatch: me.color,
+      buttons: [button("Yes, place it", () => place(row, col, kind)), button("Back", () => select(row, col), true)],
     });
   }
 
-  async function claim(row, col) {
+  async function place(row, col, kind) {
     const btns = $("card-btns").querySelectorAll("button");
     btns.forEach((b) => (b.disabled = true));
-    btns[0].textContent = "Claiming…";
+    btns[0].textContent = "Placing…";
     try {
-      await api.claimSquare(row, col);
+      await api.claimSquare(row, col, kind);
       await loadData();
-      toast("Welcome to your Square.");
+      toast(kind === "social" ? "Social Square placed. You have 9 more posts." : kind === "industrial" ? "Mine placed. It pays 1 point a day." : "Home placed.");
       select(row, col);
     } catch (err) {
       $("card-err").textContent = err.message;
       btns.forEach((b) => (b.disabled = false));
-      btns[0].textContent = "Yes, claim it";
+      btns[0].textContent = "Yes, place it";
     }
   }
 
@@ -673,7 +790,6 @@
       const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       view.lat = flight.from.lat + (flight.lat - flight.from.lat) * e;
       view.lon = wrapLon(flight.from.lon + flight.dLon * e);
-      // Rise toward the peak mid-flight, then settle.
       const base = flight.from.alt + (flight.alt - flight.from.alt) * e;
       view.alt = clampAlt(base + (flight.peak - Math.max(flight.from.alt, flight.alt)) * Math.sin(Math.PI * e));
       if (t >= 1) { const d = flight.done; flight = null; d && d(); }
@@ -681,7 +797,6 @@
       view.lat = clampLat(view.lat + vel.lat);
       view.lon = wrapLon(view.lon + vel.lon);
       vel.lat *= 0.92; vel.lon *= 0.92;
-      // Drift slowly when nobody is touching it and we're far out.
       if (!reduce && now - lastInteract > 4000 && view.alt > 1 && !selected) view.lon = wrapLon(view.lon + dt * 3);
     }
     applyCamera();
@@ -693,6 +808,7 @@
   applyCamera();
   requestAnimationFrame(frame);
   loadData().then(() => {
+    if (location.hash === "#market" && me && me.profile_complete) { idleCard(); return marketCard(); }
     const target = grid.parseHash(location.hash);
     if (target) {
       const c = grid.center(target.row, target.col);
@@ -700,6 +816,7 @@
       select(target.row, target.col);
     } else {
       idleCard();
+      const mine = me ? allSquares.filter((s) => s.handle === me.handle) : [];
       if (mine.length) { const c = grid.center(mine[0].row, mine[0].col); view.lat = c.lat; view.lon = c.lon; }
     }
   });

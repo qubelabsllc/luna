@@ -114,9 +114,9 @@
       <a href="/points?tab=invites">Your invite codes →</a>
     </div>
     <div>
-      <span class="mono soon">Coming soon</span>
-      <h3>Staking</h3>
-      <p>Stake a Square to earn points from what happens on it. Your Squares will be ready when it launches.</p>
+      <span class="mono">Mine</span>
+      <h3>Industrial Squares</h3>
+      <p>Industrial Squares already mine 1 point a day each. More ways to earn from your land are coming.</p>
     </div>
   </section>
 </main>
@@ -140,6 +140,7 @@
   const landReady = fetch("/data/land-50m.json").then((r) => r.json())
     .then((t) => (window.topojson ? topojson.feature(t, t.objects.land) : null)).catch(() => null);
 
+  let myColor = tok("--accent");
   async function drawGlobe(canvas, row, col) {
     const land = await landReady;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -160,14 +161,16 @@
     ctx.beginPath(); path({ type: "Sphere" }); ctx.strokeStyle = tok("--line"); ctx.stroke();
     // The Square itself is tiny at this scale: mark it with the Ü's dot and a ring.
     const [x, y] = proj([lon, lat]);
-    ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.strokeStyle = tok("--accent"); ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = tok("--accent"); ctx.fill();
+    ctx.strokeStyle = myColor; ctx.lineWidth = 1; ctx.strokeRect(x - 11, y - 11, 22, 22);
+    ctx.fillStyle = myColor; ctx.fillRect(x - 4.5, y - 4.5, 9, 9);
   }
 
   (async () => {
     const signedIn = await api.hasSession().catch(() => false);
     const w = signedIn ? await api.wallet().catch(() => null) : null;
     if (!w) { $("guest").hidden = false; return; }
+    if (!w.profile_complete) { location.replace("/points"); return; }
+    if (w.color) myColor = w.color;
     const [squares, network] = await Promise.all([api.mySquares(), api.network()]);
     const avail = Number(w.squares_available);
     $("member").hidden = $("grid").hidden = $("earn").hidden = false;
@@ -176,17 +179,29 @@
     $("earned").textContent = fmt.format(Number((network.find((n) => n.level === 1) || {}).earned_squares || 0));
 
     const g = $("grid");
+    let socialLeft = Number(w.posts_used);
     for (const q of squares) {
       const a = document.createElement("a");
       a.className = "deed";
       a.href = "/sfere#" + grid.hash(q.row, q.col);
-      a.innerHTML = '<div class="map"><canvas></canvas></div><div class="info"><h2></h2><span class="s coords"></span><span class="s when"></span><span class="go">Open in Sfere →</span></div>';
+      a.innerHTML = '<div class="map"><canvas></canvas></div><div class="info"><span class="mono kind"></span><h2></h2><span class="s coords"></span><span class="s when"></span><span class="go">Open in Sfere →</span></div>';
       a.querySelector("h2").textContent = grid.label(q.row, q.col);
+      a.querySelector(".kind").textContent = q.kind
+        ? QUBE.KINDS[q.kind].label + (q.kind === "industrial" ? " · 1 pt a day" : q.kind === "social" ? ` · ${Math.max(0, Math.min(9, socialLeft))} of 9 posts` : " · agent home")
+        : "Needs a type";
+      if (q.kind === "social") socialLeft -= 9;
       a.querySelector(".coords").textContent = `${grid.coords(q.row, q.col)} · 100 sq mi`;
       a.querySelector(".when").textContent = "Claimed " + new Date(q.claimed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
       a.querySelector("canvas").setAttribute("aria-label", `Globe centered on ${grid.coords(q.row, q.col)}`);
       g.append(a);
       requestAnimationFrame(() => drawGlobe(a.querySelector("canvas"), q.row, q.col));
+    }
+    {
+      const m = document.createElement("a");
+      m.className = "deed empty";
+      m.href = "/sfere#market";
+      m.innerHTML = '<span class="plus">$</span><h2>Buy a Square</h2><span class="s">100 points on the Sfere market</span>';
+      g.append(m);
     }
     for (let i = 0; i < avail; i++) {
       const a = document.createElement("a");

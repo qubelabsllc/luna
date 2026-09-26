@@ -4,13 +4,4 @@
 window.QUBE_CONFIG = {
   supabaseUrl: "https://agltizoycopdqywwoejf.supabase.co",
   supabaseAnonKey: "sb_publishable_o-oxLUJC0UXsv1mx2_R1xQ_Q3txSzCO",
-
-  // Used only while Supabase isn't connected: one invite-only account that
-  // lives in the browser. Email and access code are stored as SHA-256 hashes.
-  // This is a front door, not security; anything client-side can be bypassed.
-  preview: {
-    handle: "qube",
-    emailSha256: "e878511d0b3cf71e23ee953b94dadc003f6b0116244d69eda2a48348f06b622c",
-    codeSha256: "54832ed0c620b761802295cde0672596f69bfd564749abd4de5472e4b9c4e679",
-  },
 };
