@@ -6,12 +6,11 @@ Until `config.js` has real values, it runs in **preview mode**: one invite-only 
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
-2. Open **SQL Editor → New query**, paste all of `001_points.sql`, and click **Run**.
-3. Do the same with `002_sfere_invites.sql`, then `003_line.sql`.
-4. QÜBE is invite-only, so create the first invite and use it to sign up yourself:
+2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go: points, spins, invites, Squares, the Line and its image storage. (`001`–`003` are the same SQL split into steps, kept for reference.)
+3. QÜBE is invite-only, so create the first invite and use it to sign up yourself. Pick your own code and keep it private (this repo is public):
 
    ```sql
-   insert into public.invites (code) values ('QUBE-FOUNDER');
+   insert into public.invites (code) values ('YOUR-PRIVATE-CODE');
    ```
 
    After that, every member gets 10 invite codes on their profile.

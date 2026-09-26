@@ -124,7 +124,7 @@
       async mySquares() {
         const { data: s } = await sb.auth.getSession();
         const uid = s.session && s.session.user.id;
-        return check(await sb.from("squares").select('"row", col, claimed_at').eq("owner", uid).order("claimed_at"));
+        return check(await sb.from("squares").select("row, col, claimed_at").eq("owner", uid).order("claimed_at"));
       },
       async claimSquare(row, col) { return check(await sb.rpc("claim_square", { p_row: row, p_col: col })); },
       async sfereSquares() { return check(await sb.rpc("sfere_squares")); },
