@@ -2,8 +2,8 @@
 // only allows what the database's row-level security and functions permit.
 // Find them in Supabase → Project Settings → API.
 window.QUBE_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: "",
+  supabaseUrl: "https://agltizoycopdqywwoejf.supabase.co",
+  supabaseAnonKey: "sb_publishable_o-oxLUJC0UXsv1mx2_R1xQ_Q3txSzCO",
 
   // Used only while Supabase isn't connected: one invite-only account that
   // lives in the browser. Email and access code are stored as SHA-256 hashes.
