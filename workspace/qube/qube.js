@@ -1,65 +1,94 @@
-// Shared by every QÜBE page: the Sfere grid, avatars, and the data layer.
-// Load after config.js (and after supabase-js, where a page uses it).
+// Shared by every QÜBE page: the Sfere grid, colors, avatars, the data layer and the nav.
+// Load after config.js and supabase-js.
 (() => {
   const cfg = window.QUBE_CONFIG || {};
   const live = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
 
   // ------------------------------------------------------------------ grid
-  // Must match sfere_rows() / sfere_cols() in supabase/002_sfere_invites.sql.
-  // 1,243 bands of latitude, 10 miles tall; each band cut into ~10-mile Squares.
-  const ROWS = 1243;
-  const EQUATOR_MI = 24901;
-  const DLAT = 180 / ROWS;
-  const colsCache = new Int32Array(ROWS);
-  for (let r = 0; r < ROWS; r++) {
-    const lat = -90 + (r + 0.5) * DLAT;
-    colsCache[r] = Math.max(1, Math.round((EQUATOR_MI * Math.cos((lat * Math.PI) / 180)) / 10));
+  // The Sfere is a cube inflated into a sphere. Each of the 6 faces is cut into
+  // N × N Squares on an equiangular grid, so rows and columns run straight.
+  // A Square is (row, col): row = face * N + y, col = x.
+  // Must match sfere_cell() / sfere_rows() in supabase/004_profiles_types_market.sql.
+  const N = 573;
+  const Q = Math.PI / 4;
+  // Per face: normal n, right r, up t. A point on the cube face is n + a·r + b·t.
+  const FACES = [
+    { n: [1, 0, 0], r: [0, 0, -1], t: [0, 1, 0] },
+    { n: [-1, 0, 0], r: [0, 0, 1], t: [0, 1, 0] },
+    { n: [0, 1, 0], r: [1, 0, 0], t: [0, 0, -1] },
+    { n: [0, -1, 0], r: [1, 0, 0], t: [0, 0, 1] },
+    { n: [0, 0, 1], r: [1, 0, 0], t: [0, 1, 0] },
+    { n: [0, 0, -1], r: [-1, 0, 0], t: [0, 1, 0] },
+  ];
+  const DEG = Math.PI / 180;
+  const vecOf = (lat, lon) => [Math.cos(lat * DEG) * Math.cos(lon * DEG), Math.sin(lat * DEG), -Math.cos(lat * DEG) * Math.sin(lon * DEG)];
+  const latLonOf = ([x, y, z]) => ({ lat: Math.asin(Math.max(-1, Math.min(1, y))) / DEG, lon: Math.atan2(-z, x) / DEG });
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
+
+  function faceOf(v) {
+    const [x, y, z] = v, ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z);
+    if (ax >= ay && ax >= az) return x > 0 ? 0 : 1;
+    if (ay >= az) return y > 0 ? 2 : 3;
+    return z > 0 ? 4 : 5;
   }
   const grid = {
-    ROWS,
-    DLAT,
-    TOTAL: colsCache.reduce((a, b) => a + b, 0),
-    cols: (r) => colsCache[r],
-    cellAt(lat, lon) {
-      const row = Math.min(ROWS - 1, Math.max(0, Math.floor((lat + 90) / DLAT)));
-      const n = colsCache[row];
-      const col = Math.min(n - 1, Math.max(0, Math.floor((((lon + 180) % 360) + 360) % 360 / (360 / n))));
-      return { row, col };
+    N,
+    ROWS: 6 * N,
+    TOTAL: 6 * N * N,
+    FACES,
+    cellOfVec(v) {
+      const face = faceOf(v), F = FACES[face], d = dot(v, F.n);
+      const a = dot(v, F.r) / d, b = dot(v, F.t) / d;
+      const i = Math.min(N - 1, Math.max(0, Math.floor(((Math.atan(a) + Q) / (2 * Q)) * N)));
+      const j = Math.min(N - 1, Math.max(0, Math.floor(((Math.atan(b) + Q) / (2 * Q)) * N)));
+      return { row: face * N + j, col: i };
     },
-    bounds(row, col) {
-      const n = colsCache[row], w = 360 / n;
-      return { lat0: -90 + row * DLAT, lat1: -90 + (row + 1) * DLAT, lon0: -180 + col * w, lon1: -180 + (col + 1) * w };
+    cellAt: (lat, lon) => grid.cellOfVec(vecOf(lat, lon)),
+    // Unit vector at (u, v) inside a Square; (0.5, 0.5) is its centre.
+    dir(row, col, u = 0.5, v = 0.5) {
+      const F = FACES[Math.floor(row / N)], j = row % N;
+      const a = Math.tan(-Q + ((col + u) / N) * 2 * Q), b = Math.tan(-Q + ((j + v) / N) * 2 * Q);
+      return norm([F.n[0] + a * F.r[0] + b * F.t[0], F.n[1] + a * F.r[1] + b * F.t[1], F.n[2] + a * F.r[2] + b * F.t[2]]);
     },
-    center(row, col) {
-      const b = grid.bounds(row, col);
-      return { lat: (b.lat0 + b.lat1) / 2, lon: (b.lon0 + b.lon1) / 2 };
+    center: (row, col) => latLonOf(grid.dir(row, col)),
+    label(row, col) {
+      const p = (n) => String(n).padStart(3, "0");
+      return `SQ ${Math.floor(row / N) + 1}·${p(col)}·${p(row % N)}`;
     },
-    label: (row, col) => `SQ ${String(row).padStart(4, "0")}·${String(col).padStart(4, "0")}`,
     coords(row, col) {
       const { lat, lon } = grid.center(row, col);
       return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
     },
     hash: (row, col) => `${row}.${col}`,
     parseHash(h) {
-      const m = /^#?(\d{1,4})\.(\d{1,4})$/.exec(h || "");
+      const m = /^#?(\d{1,4})\.(\d{1,3})$/.exec(h || "");
       if (!m) return null;
       const row = +m[1], col = +m[2];
-      return row < ROWS && col < colsCache[row] ? { row, col } : null;
+      return row < 6 * N && col < N ? { row, col } : null;
     },
   };
 
+  // ---------------------------------------------------------------- colors
+  // A member's color is chosen once, at onboarding, and never changes.
+  // Must match qube_colors() in the database.
+  const COLORS = [
+    ["#3a3df5", "Ultramarine"], ["#e0584a", "Coral"], ["#f08a24", "Tangerine"], ["#e8b817", "Sun"],
+    ["#7cb518", "Lime"], ["#12a150", "Emerald"], ["#0fa3a3", "Teal"], ["#2d9cdb", "Sky"],
+    ["#7b4ae2", "Violet"], ["#d63384", "Magenta"], ["#f06595", "Rose"], ["#3d3f46", "Graphite"],
+  ];
+  const KINDS = {
+    residential: { label: "Residential", blurb: "Where your agent will live. Decorating comes later." },
+    industrial: { label: "Industrial", blurb: "A points mine. Earns 1 point every day, forever." },
+    social: { label: "Social", blurb: "Holds 9 of your posts on the Line. You need one to post." },
+  };
+
   // --------------------------------------------------------------- avatars
-  // Concentric rings around a solid core, from a seed (the user's id).
-  // Same seed → same avatar, forever.
-  const PALETTES = [
-    { bg: "#f7f3ea", ink: "#4a454d", a: "#e0584a", b: "#ff6a6a" },
-    { bg: "#e0584a", ink: "#4a454d", a: "#f7f3ea", b: "#ffb4a8" },
-    { bg: "#eceefe", ink: "#111216", a: "#3a3df5", b: "#9fa2ff" },
-    { bg: "#3a3df5", ink: "#111216", a: "#f4f4ff", b: "#ffcf5a" },
-    { bg: "#eef0e8", ink: "#2f3a33", a: "#6f8f5e", b: "#d9a441" },
-    { bg: "#1d1b26", ink: "#f1ede4", a: "#e0584a", b: "#8f8cff" },
-    { bg: "#efe6d8", ink: "#3b3530", a: "#c7773f", b: "#5f7fa8" },
-    { bg: "#e9eef3", ink: "#26303a", a: "#4b7bd1", b: "#f07a5f" },
+  // Concentric rings around a solid core, seeded by the member's id, in the
+  // member's own color. Same member → same avatar, forever.
+  const GROUNDS = [
+    { bg: "#f7f3ea", ink: "#4a454d" }, { bg: "#eef0e8", ink: "#2f3a33" }, { bg: "#efe6d8", ink: "#3b3530" },
+    { bg: "#e9eef3", ink: "#26303a" }, { bg: "#f3f3f5", ink: "#111216" }, { bg: "#1d1b26", ink: "#f1ede4" },
   ];
   function seedRandom(str) {
     let h = 2166136261;
@@ -71,23 +100,31 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  function avatar(seed) {
+  function mix(hex, other, t) {
+    const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const a = p(hex), b = p(other);
+    return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("");
+  }
+  function avatar(seed, color) {
     const rnd = seedRandom(String(seed));
     const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
-    const p = pick(PALETTES);
+    const g = pick(GROUNDS);
+    const a = color || "#9aa0aa";
+    const b = mix(a, g.bg, 0.55);
     const rings = 1 + Math.floor(rnd() * 3);
-    const parts = [`<rect width="100" height="100" fill="${p.bg}"/>`];
+    const parts = [`<rect width="100" height="100" fill="${g.bg}"/>`];
     let r = 29 + rnd() * 3;
     for (let i = 0; i < rings; i++) {
       const w = 1.6 + rnd() * 1.4;
-      const color = i === rings - 1 && rnd() < 0.7 ? p.a : pick([p.ink, p.ink, p.a]);
-      parts.push(`<circle cx="50" cy="50" r="${r.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${w.toFixed(2)}"/>`);
+      const c = i === rings - 1 || rnd() < 0.5 ? a : g.ink;
+      parts.push(`<circle cx="50" cy="50" r="${r.toFixed(2)}" fill="none" stroke="${c}" stroke-width="${w.toFixed(2)}"/>`);
       r -= w + 2 + rnd() * 3.5;
     }
     const core = Math.min(r - 3, 10 + rnd() * 5);
     const off = rnd() < 0.25 ? (rnd() - 0.5) * 6 : 0;
-    parts.push(`<circle cx="${(50 + off).toFixed(2)}" cy="${(50 - off).toFixed(2)}" r="${core.toFixed(2)}" fill="${p.ink}"/>`);
-    if (rnd() < 0.6) parts.push(`<circle cx="${(50 + off).toFixed(2)}" cy="${(50 - off).toFixed(2)}" r="${(core * (0.25 + rnd() * 0.12)).toFixed(2)}" fill="${p.b}"/>`);
+    const cx = (50 + off).toFixed(2), cy = (50 - off).toFixed(2);
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${core.toFixed(2)}" fill="${g.ink}"/>`);
+    if (rnd() < 0.7) parts.push(`<circle cx="${cx}" cy="${cy}" r="${(core * (0.28 + rnd() * 0.12)).toFixed(2)}" fill="${rnd() < 0.5 ? a : b}"/>`);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-hidden="true">${parts.join("")}</svg>`;
   }
 
@@ -95,24 +132,21 @@
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
     return Array.from(new Uint8Array(buf), (x) => x.toString(16).padStart(2, "0")).join("");
   }
-  // A wallet-style address for display: stable, derived from the user id.
+  // A wallet-style address for display: stable, derived from the member's id.
   async function address(id) {
-    const h = await sha256("qube:" + id);
-    return "qb1" + h.slice(0, 38);
+    return "qb1" + (await sha256("qube:" + id)).slice(0, 38);
   }
 
   // ------------------------------------------------------------------- api
-  // One interface, two backends: Supabase when configured, otherwise a
-  // single invite-only preview account kept in this browser.
-  const PRIZES = [[5, 350], [10, 250], [25, 180], [50, 120], [100, 70], [250, 25], [1000, 5]];
-
   function supabaseApi() {
     const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
     const check = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
+    const rpc = async (fn, args) => check(await sb.rpc(fn, args));
+    const uid = async () => { const s = check(await sb.auth.getSession()).session; return s && s.user.id; };
     return {
       live: true,
-      async hasSession() { return Boolean(check(await sb.auth.getSession()).session); },
-      async checkInvite(code) { return check(await sb.rpc("check_invite", { p_code: code })); },
+      async hasSession() { return Boolean(await uid()); },
+      checkInvite: (code) => rpc("check_invite", { p_code: code }),
       async signUp(email, password) {
         const data = check(await sb.auth.signUp({ email, password }));
         if (!data.session) {
@@ -121,187 +155,66 @@
         }
       },
       async signIn(email, password) { check(await sb.auth.signInWithPassword({ email, password })); },
-      async wallet() { const rows = check(await sb.rpc("my_wallet")); return rows && rows[0] ? rows[0] : null; },
-      async claimHandle(handle, invite) { check(await sb.rpc("claim_handle", { p_handle: handle, p_invite: invite || "" })); },
-      async spin() { return check(await sb.rpc("spin"))[0]; },
+      async signOut() { await sb.auth.signOut(); },
+      async wallet() { const rows = await rpc("my_wallet"); return rows && rows[0] ? rows[0] : null; },
+      claimHandle: (handle, invite) => rpc("claim_handle", { p_handle: handle, p_invite: invite || "" }),
+      completeProfile: (color, birthday, gender) => rpc("complete_profile", { p_color: color, p_birthday: birthday, p_gender: gender }),
+      async spin() { return (await rpc("spin"))[0]; },
       async activity() { return check(await sb.from("ledger").select("amount, kind, note, created_at").order("created_at", { ascending: false }).limit(25)); },
-      async invites() { return check(await sb.rpc("my_invites")); },
-      async network() { return check(await sb.rpc("my_network")); },
+      invites: () => rpc("my_invites"),
+      network: () => rpc("my_network"),
       async mySquares() {
-        const { data: s } = await sb.auth.getSession();
-        const uid = s.session && s.session.user.id;
-        return check(await sb.from("squares").select("row, col, claimed_at").eq("owner", uid).order("claimed_at"));
+        return check(await sb.from("squares").select("row, col, kind, claimed_at, last_collected_at").eq("owner", await uid()).order("claimed_at"));
       },
-      async claimSquare(row, col) { return check(await sb.rpc("claim_square", { p_row: row, p_col: col })); },
-      async sfereSquares() { return check(await sb.rpc("sfere_squares")); },
-      async feed(before) { return check(await sb.rpc("line_feed", { p_before: before || null, p_limit: 30 })); },
-      async thread(id) { return check(await sb.rpc("line_thread", { p_id: id })); },
+      claimSquare: (row, col, kind) => rpc("claim_square", { p_row: row, p_col: col, p_kind: kind }),
+      setSquareKind: (row, col, kind) => rpc("set_square_kind", { p_row: row, p_col: col, p_kind: kind }),
+      buySquare: () => rpc("buy_square"),
+      collectMines: () => rpc("collect_mines"),
+      sfereSquares: () => rpc("sfere_squares"),
+      squarePosts: (row, col) => rpc("square_posts", { p_row: row, p_col: col }),
+      async pointsStats() { return (await rpc("points_stats"))[0]; },
+      myPointsSeries: () => rpc("my_points_series"),
+      feed: (before) => rpc("line_feed", { p_before: before || null, p_limit: 30 }),
+      thread: (id) => rpc("line_thread", { p_id: id }),
       async post({ body, media, parentId }) {
         let url = null, type = null;
         if (media) {
-          const { data: s } = await sb.auth.getSession();
-          const uid = s.session && s.session.user.id;
-          const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${media.ext}`;
+          const path = `${await uid()}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${media.ext}`;
           check(await sb.storage.from("line-media").upload(path, media.blob, { contentType: media.blob.type, upsert: false }));
           url = sb.storage.from("line-media").getPublicUrl(path).data.publicUrl;
           type = media.type;
         }
-        return check(await sb.rpc("create_post", { p_body: body, p_media_url: url, p_media_type: type, p_parent_id: parentId || null }));
+        return rpc("create_post", { p_body: body, p_media_url: url, p_media_type: type, p_parent_id: parentId || null });
       },
-      async like(id) { return check(await sb.rpc("like_post", { p_id: id })); },
-      async unlike(id) { return check(await sb.rpc("unlike_post", { p_id: id })); },
-      async deletePost(id) { check(await sb.rpc("delete_post", { p_id: id })); },
-      async signOut() { await sb.auth.signOut(); },
+      like: (id) => rpc("like_post", { p_id: id }),
+      unlike: (id) => rpc("unlike_post", { p_id: id }),
+      deletePost: (id) => rpc("delete_post", { p_id: id }),
     };
   }
 
-  function previewApi() {
-    const invite = cfg.preview || {};
-    const KEY = "qube-preview-wallet";
-    const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
-    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
-    let s = load();
-    const today = () => new Date().toISOString().slice(0, 10);
-    const tomorrow = () => { const d = new Date(); d.setUTCHours(24, 0, 0, 0); return d.toISOString(); };
-    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    const refresh = () => { s = load(); };
-    const ensure = () => {
-      s.id = s.id || (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
-      s.ledger = s.ledger || [];
-      s.squares = s.squares || [];
-      if (!s.invites) {
-        s.invites = Array.from({ length: 10 }, () => Math.random().toString(16).slice(2, 10).toUpperCase().padEnd(8, "0"));
-      }
-    };
-    const balance = () => s.ledger.reduce((a, r) => a + r.amount, 0);
-    return {
-      live: false,
-      async hasSession() { refresh(); return Boolean(s.email && s.handle); },
-      async checkInvite() { return false; },
-      async signUp() { throw new Error("Invites open when QÜBE launches. Members can sign in."); },
-      async signIn(email, password) {
-        await wait(300);
-        if ((await sha256(email.trim().toLowerCase())) !== invite.emailSha256 || (await sha256(password)) !== invite.codeSha256) {
-          throw new Error("That email and password don't match.");
-        }
-        refresh();
-        s.email = email;
-        if (!s.handle) { s.handle = invite.handle; s.joined = new Date().toISOString(); }
-        ensure();
-        save();
-      },
-      async wallet() {
-        refresh();
-        if (!s.handle) return null;
-        ensure(); save();
-        return {
-          id: s.id, handle: s.handle, balance: balance(), joined_at: s.joined,
-          spun_today: s.spinDay === today() ? s.spinAmount : null, next_spin_at: tomorrow(),
-          squares_owned: s.squares.length, squares_available: 1 - s.squares.length, invited_by_handle: null,
-        };
-      },
-      async claimHandle() { throw new Error("Your account is already set up."); },
-      async spin() {
-        await wait(300);
-        refresh();
-        if (s.spinDay === today()) throw new Error("You already spun today");
-        const total = PRIZES.reduce((a, p) => a + p[1], 0);
-        let roll = Math.floor(Math.random() * total), amount = 5;
-        for (const [a, w] of PRIZES) { if (roll < w) { amount = a; break; } roll -= w; }
-        s.spinDay = today(); s.spinAmount = amount;
-        s.ledger.unshift({ amount, kind: "spin", note: "Daily spin", created_at: new Date().toISOString() });
-        save();
-        return { amount, balance: balance() };
-      },
-      async activity() { refresh(); return s.ledger || []; },
-      async invites() { refresh(); ensure(); save(); return s.invites.map((code) => ({ code, used_by_handle: null, used_at: null })); },
-      async network() { return [1, 2, 3].map((level) => ({ level, people: 0, earned_points: 0, earned_squares: 0 })); },
-      async mySquares() { refresh(); return (s.squares || []).map((q) => ({ row: q.row, col: q.col, claimed_at: q.claimed_at })); },
-      async claimSquare(row, col) {
-        await wait(300);
-        refresh(); ensure();
-        if (!s.handle || !s.email) throw new Error("Sign in to claim a Square.");
-        if (s.squares.length >= 1) throw new Error("You have no Squares left to place. Invite someone to earn one.");
-        if (row < 0 || row >= ROWS || col < 0 || col >= colsCache[row]) throw new Error("That Square is off the grid");
-        s.squares.push({ row, col, claimed_at: new Date().toISOString() });
-        save();
-        return { row, col };
-      },
-      async sfereSquares() { refresh(); return (s.squares || []).map((q) => ({ row: q.row, col: q.col, handle: s.handle, claimed_at: q.claimed_at })); },
-      async feed(before) {
-        refresh();
-        return (s.posts || [])
-          .filter((p) => !p.parent_id && (!before || p.id < before))
-          .sort((a, b) => b.id - a.id).slice(0, 30)
-          .map((p) => ({ ...p, author_id: s.id, handle: s.handle, liked: false }));
-      },
-      async thread(id) {
-        refresh();
-        return (s.posts || [])
-          .filter((p) => p.id === id || p.parent_id === id)
-          .sort((a, b) => (a.id === id ? -1 : b.id === id ? 1 : a.id - b.id))
-          .map((p) => ({ ...p, author_id: s.id, handle: s.handle, liked: false }));
-      },
-      async post({ body, media, parentId }) {
-        refresh();
-        if (!s.handle || !s.email) throw new Error("Sign in to post.");
-        body = (body || "").trim();
-        if (body.length > 500) throw new Error("Posts are 500 characters at most");
-        if (!body && !media) throw new Error("Write something or add an image");
-        s.posts = s.posts || [];
-        s.nextPost = (s.nextPost || 0) + 1;
-        const p = {
-          id: s.nextPost, parent_id: parentId || null, body,
-          media_url: media ? await blobToDataUrl(media.blob) : null, media_type: media ? media.type : null,
-          like_count: 0, reply_count: 0, created_at: new Date().toISOString(),
-        };
-        s.posts.push(p);
-        if (parentId) { const parent = s.posts.find((x) => x.id === parentId); if (parent) parent.reply_count++; }
-        try { localStorage.setItem(KEY, JSON.stringify(s)); }
-        catch { s.posts.pop(); throw new Error("Preview storage is full. Delete a post with an image and try again."); }
-        return p;
-      },
-      async like() { throw new Error("You can't like your own post"); },
-      async unlike() { throw new Error("You haven't liked this"); },
-      async deletePost(id) {
-        refresh();
-        const p = (s.posts || []).find((x) => x.id === id);
-        if (!p) return;
-        s.posts = s.posts.filter((x) => x.id !== id && x.parent_id !== id);
-        if (p.parent_id) { const parent = s.posts.find((x) => x.id === p.parent_id); if (parent) parent.reply_count = Math.max(0, parent.reply_count - 1); }
-        save();
-      },
-      async signOut() { refresh(); delete s.email; save(); },
-    };
-  }
-
-  function blobToDataUrl(blob) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = () => reject(new Error("Couldn't read that file"));
-      r.readAsDataURL(blob);
-    });
+  // Without Supabase settings the site can't sign anyone in; pages still render.
+  function offlineApi() {
+    const off = async () => { throw new Error("QÜBE isn't connected to its database yet."); };
+    return new Proxy({ live: false, hasSession: async () => false, sfereSquares: async () => [], feed: async () => [], pointsStats: async () => null },
+      { get: (t, k) => (k in t ? t[k] : off) });
   }
 
   // Shrink photos before upload; keep GIFs as they are so they still move.
   async function prepareMedia(file) {
     if (!file || !/^image\//.test(file.type)) throw new Error("Pick an image or a GIF.");
-    const gifLimit = live ? 5 : 1.5;
     if (file.type === "image/gif") {
-      if (file.size > gifLimit * 1024 * 1024) throw new Error(`GIFs can be up to ${gifLimit} MB${live ? "" : " in preview"}.`);
+      if (file.size > 5 * 1024 * 1024) throw new Error("GIFs can be up to 5 MB.");
       return { blob: file, ext: "gif", type: "gif", previewUrl: URL.createObjectURL(file) };
     }
     if (file.size > 20 * 1024 * 1024) throw new Error("That image is over 20 MB.");
     const bmp = await createImageBitmap(file).catch(() => null);
     if (!bmp) throw new Error("Couldn't open that image.");
-    const max = live ? 1600 : 1080;
-    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
     const c = document.createElement("canvas");
     c.width = Math.round(bmp.width * k);
     c.height = Math.round(bmp.height * k);
     c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", live ? 0.85 : 0.78));
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
     return { blob, ext: "jpg", type: "image", previewUrl: URL.createObjectURL(blob) };
   }
 
@@ -323,15 +236,19 @@
       <nav class="qn-tabs" aria-label="Main">
         ${TABS.map(([key, label, href]) => `<a href="${href}" class="qn-tab"${key === active ? ' aria-current="page"' : ""}>${ICONS[key]}<span>${label}</span></a>`).join("")}
       </nav>
-      <div class="qn-me">
-        ${live ? "" : '<span class="qn-pill">Preview</span>'}
-        <a class="qn-join" href="/join">Join</a>
-      </div>`;
+      <div class="qn-me"><a class="qn-join" href="/join">Join</a></div>`;
     document.body.prepend(header);
     document.body.classList.add("has-qn");
-    // Swap "Join" for the member's avatar once we know who's here.
     (async () => {
-      try { if (await api.hasSession()) setNavUser(await api.wallet()); } catch {}
+      try {
+        if (!(await api.hasSession())) return;
+        // Mines pay out whenever a member opens QÜBE.
+        await api.collectMines().catch(() => 0);
+        const w = await api.wallet();
+        setNavUser(w);
+        // Everyone finishes onboarding before using the rest of QÜBE.
+        if ((!w || !w.profile_complete) && active !== "points" && active !== null) location.replace("/points");
+      } catch {}
     })();
     return header;
   }
@@ -343,7 +260,7 @@
       slot.className = "qn-avatar";
       slot.href = "/points";
       slot.setAttribute("aria-label", "@" + w.handle + ", your Points");
-      slot.innerHTML = avatar(w.id);
+      slot.innerHTML = avatar(w.id, w.color);
     } else {
       slot.className = "qn-join";
       slot.href = "/join";
@@ -352,6 +269,6 @@
     }
   }
 
-  const api = live ? supabaseApi() : previewApi();
-  window.QUBE = { live, grid, avatar, address, sha256, prepareMedia, nav, setNavUser, api };
+  const api = live ? supabaseApi() : offlineApi();
+  window.QUBE = { live, grid, COLORS, KINDS, avatar, mix, address, sha256, prepareMedia, nav, setNavUser, api };
 })();

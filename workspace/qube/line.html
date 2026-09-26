@@ -202,7 +202,7 @@
 
     const av = document.createElement("span");
     av.className = "av";
-    av.innerHTML = avatar(p.author_id);
+    av.innerHTML = avatar(p.author_id, p.color);
     const body = document.createElement("div");
     body.style.minWidth = "0";
 
@@ -321,7 +321,7 @@
           <button class="btn" type="button" disabled>${parentId ? "Reply" : "Post"}</button>
         </div>
       </div>`;
-    wrap.querySelector(".av").innerHTML = avatar(me.id);
+    wrap.querySelector(".av").innerHTML = avatar(me.id, me.color);
     wrap.querySelector(".who").textContent = "@" + me.handle;
     const ta = wrap.querySelector("textarea");
     const file = wrap.querySelector("input[type=file]");
@@ -335,7 +335,7 @@
       ta.style.height = "auto";
       ta.style.height = ta.scrollHeight + "px";
       const n = ta.value.trim().length;
-      count.textContent = ta.value.length > 400 ? 500 - ta.value.length : "";
+      count.textContent = ta.value.length > 400 ? 500 - ta.value.length : parentId ? "" : `${me.posts_used} of ${me.post_slots} post slots`;
       count.classList.toggle("over", ta.value.length > 500);
       send.disabled = (!n && !media) || ta.value.length > 500;
     };
@@ -361,6 +361,7 @@
       send.textContent = parentId ? "Replying…" : "Posting…";
       try {
         await api.post({ body: ta.value, media, parentId });
+        me = (await api.wallet()) || me;
         ta.value = ""; media = null; prev.hidden = true;
         onPosted && onPosted();
       } catch (e) { err.textContent = e.message; }
@@ -392,8 +393,18 @@
   function mountComposer() {
     const slot = $("composer-slot");
     slot.textContent = "";
-    if (me) {
-      slot.append(composer({ onPosted: () => { toast("Posted"); loadFeed(); } }));
+    if (me && Number(me.post_slots) === 0) {
+      const g = document.createElement("div");
+      g.className = "guest";
+      g.innerHTML = '<span>Posting needs a Social Square. Each one holds 9 of your posts.</span><div><a class="btn" href="/sfere">Place one</a><a class="btn ghost" href="/sfere#market">Buy a Square</a></div>';
+      slot.append(g);
+    } else if (me && Number(me.posts_used) >= Number(me.post_slots)) {
+      const g = document.createElement("div");
+      g.className = "guest";
+      g.innerHTML = `<span>Your Social Squares are full: ${me.posts_used} of ${me.post_slots} posts. Add another Social Square to post more.</span><div><a class="btn" href="/sfere#market">Buy a Square</a></div>`;
+      slot.append(g);
+    } else if (me) {
+      slot.append(composer({ onPosted: () => { toast("Posted"); mountComposer(); loadFeed(); } }));
     } else {
       const g = document.createElement("div");
       g.className = "guest";

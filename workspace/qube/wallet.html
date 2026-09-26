@@ -196,6 +196,57 @@
   }
   .toast.show { opacity: 1; }
 
+  /* ---------- onboarding */
+  .step.wide { max-width: 520px; }
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .swatch { aspect-ratio: 1 / 1; border: 0; border-radius: 50%; cursor: pointer; position: relative; transition: transform 0.15s; }
+  .swatch:hover { transform: scale(1.08); }
+  .swatch[aria-checked="true"] { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink); }
+  .color-note { margin: 0; font-size: 14px; color: var(--muted); }
+  .color-note b { color: var(--ink); font-weight: 500; }
+  .preview { display: flex; align-items: center; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+  .preview .avatar { width: 56px; height: 56px; }
+  .preview .tile { width: 40px; height: 40px; box-shadow: inset 0 0 0 1px rgba(17,18,22,.2); }
+  .preview .who { font-weight: 500; }
+  .preview .s { font-size: 13px; color: var(--muted); }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill-opt { border: 0; background: #fff; box-shadow: inset 0 0 0 1px var(--line); border-radius: 999px; padding: 9px 14px; cursor: pointer; font: 400 14px/1 var(--body); }
+  .pill-opt[aria-checked="true"] { background: var(--ink); color: #fff; box-shadow: none; }
+  input[type="date"] { font: 300 22px/1.2 var(--display); }
+  .private { font-size: 13px; color: var(--muted); }
+
+  /* ---------- $POINTS */
+  .metrics { display: flex; flex-direction: column; gap: 14px; }
+  .m-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .m-title { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(58,61,245,.5); animation: live 2s infinite; }
+  @keyframes live { 70% { box-shadow: 0 0 0 7px rgba(58,61,245,0); } 100% { box-shadow: 0 0 0 0 rgba(58,61,245,0); } }
+  .seg { display: inline-flex; padding: 3px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); }
+  .seg button { border: 0; background: none; cursor: pointer; padding: 6px 12px; border-radius: 999px; font: 400 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .seg button[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .m-hero { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .m-hero .big { font: 200 clamp(44px, 8vw, 72px)/1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .m-delta { display: inline-flex; align-items: center; gap: 6px; font: 400 13px/1 var(--mono); color: var(--ink); background: var(--accent-tint); border-radius: 999px; padding: 6px 10px; }
+  .m-delta i { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 7px solid var(--accent); }
+  .chart { position: relative; height: 200px; }
+  .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .chart .tip { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; background: var(--ink); color: #fff; border-radius: 6px; padding: 6px 9px; font: 400 12px/1.3 var(--mono); white-space: nowrap; opacity: 0; transition: opacity 0.12s; }
+  .chart .tip b { font-weight: 400; color: #fff; }
+  .chart .tip span { color: #b8bbc2; }
+  .m-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+  .m-tile { padding: 14px 14px 14px 0; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--line); }
+  .m-tile:not(:nth-child(3n + 1)) { padding-left: 14px; border-left: 1px solid var(--line); }
+  .m-tile b { font: 300 22px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+  .m-tile span.s { font-size: 12.5px; color: var(--muted); }
+  .glyph.kind { background: none; }
+  .glyph.kind svg { width: 30px; height: 30px; }
+
+  @media (max-width: 640px) {
+    .m-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .m-tile:not(:nth-child(3n + 1)) { padding-left: 0; border-left: 0; }
+    .m-tile:nth-child(2n) { padding-left: 14px; border-left: 1px solid var(--line); }
+    .swatches { gap: 8px; }
+  }
   @media (max-width: 640px) {
     .id-card { gap: 16px; }
     .avatar { width: 72px; height: 72px; }
@@ -209,7 +260,7 @@
     .list li.plain .when { grid-column: 1; grid-row: 2; }
     .list li.plain .v { grid-row: 1 / span 2; grid-column: 2; }
   }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .live-dot { animation: none; } }
 </style>
 </head>
 <body>
@@ -227,10 +278,6 @@
           <label class="mono" for="invite">Invite code</label>
           <div class="field"><input class="code" id="invite" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="QUBE-XXXX-XXXX"></div>
         </div>
-        <div class="fieldset join-only">
-          <label class="mono" for="new-handle">Handle</label>
-          <div class="field"><span class="prefix">@</span><input id="new-handle" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="yourname"></div>
-        </div>
         <div class="fieldset">
           <label class="mono" for="email">Email</label>
           <div class="field"><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required></div>
@@ -247,21 +294,40 @@
       </div>
     </section>
 
-    <section class="step" id="step-handle" hidden>
+    <section class="step wide" id="step-handle" hidden>
       <div class="mono">Last step</div>
-      <h1>Pick your handle.</h1>
-      <p class="lead">This is your name across QÜBE. It can't be changed later.</p>
+      <h1>Make it yours.</h1>
+      <p class="lead">Finish your profile to enter QÜBE.</p>
       <form id="form-handle" novalidate>
         <div class="fieldset" id="handle-invite-set" hidden>
           <label class="mono" for="handle-invite">Invite code</label>
-          <div class="field"><input class="code" id="handle-invite" type="text" autocomplete="off" spellcheck="false" maxlength="32" placeholder="A1B2C3D4"></div>
+          <div class="field"><input class="code" id="handle-invite" type="text" autocomplete="off" spellcheck="false" maxlength="32" placeholder="QUBE-XXXX-XXXX"></div>
+        </div>
+        <div class="fieldset" id="handle-set">
+          <label class="mono" for="handle">Username</label>
+          <div class="field"><span class="prefix">@</span><input id="handle" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="yourname"></div>
         </div>
         <div class="fieldset">
-          <label class="mono" for="handle">Handle</label>
-          <div class="field"><span class="prefix">@</span><input id="handle" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="yourname" required></div>
+          <span class="mono" id="color-label">Your color</span>
+          <div class="swatches" role="radiogroup" aria-labelledby="color-label" id="swatches"></div>
+          <p class="color-note"><b>Choose wisely: your color is permanent.</b> It colors your avatar and every Square you own on the Sfere.</p>
+          <div class="preview" id="preview" hidden>
+            <div class="avatar" id="preview-avatar"></div>
+            <div class="tile" id="preview-tile"></div>
+            <div><div class="who" id="preview-who"></div><div class="s" id="preview-name"></div></div>
+          </div>
         </div>
-        <div class="hint" id="handle-hint" role="alert">3–20 characters: letters, numbers and underscores.</div>
-        <button class="btn" type="submit" disabled>Claim handle</button>
+        <div class="fieldset">
+          <label class="mono" for="birthday">Birthday</label>
+          <div class="field"><input id="birthday" type="date" required></div>
+        </div>
+        <div class="fieldset">
+          <span class="mono" id="gender-label">Gender</span>
+          <div class="pills" role="radiogroup" aria-labelledby="gender-label" id="genders"></div>
+        </div>
+        <p class="private">Your birthday and gender stay private. Only you can see them.</p>
+        <div class="hint" id="handle-hint" role="alert"></div>
+        <button class="btn" type="submit" disabled>Enter QÜBE</button>
       </form>
       <div class="row mono"><button class="linklike" id="sign-out-2" type="button">Sign out</button></div>
     </section>
@@ -313,6 +379,20 @@
           <span class="mono">Address</span>
         </button>
       </div>
+
+      <section class="metrics" aria-labelledby="m-title">
+        <div class="m-head">
+          <span class="mono m-title" id="m-title"><span class="live-dot" aria-hidden="true"></span>$POINTS</span>
+          <div class="seg" role="tablist" aria-label="Chart">
+            <button type="button" role="tab" aria-selected="true" data-view="network">Network</button>
+            <button type="button" role="tab" aria-selected="false" data-view="you">You</button>
+          </div>
+        </div>
+        <div class="m-hero"><span class="big" id="m-value">—</span><span class="m-delta" id="m-delta" hidden><i aria-hidden="true"></i><span></span></span></div>
+        <div class="mono" id="m-caption">Total supply · last 30 days</div>
+        <div class="chart" id="chart"><svg id="chart-svg" role="img" aria-label="Points over the last 30 days"></svg><div class="tip" id="chart-tip"></div></div>
+        <div class="m-grid" id="m-grid"></div>
+      </section>
 
       <div>
         <div class="tabs" role="tablist">
@@ -420,18 +500,13 @@
   }
   $("mode-toggle").addEventListener("click", () => { setMode(mode === "join" ? "signin" : "join"); show("email"); });
   $("invite").addEventListener("input", (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""); });
-  $("new-handle").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""); });
 
   $("form-email").addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = $("email").value.trim();
     const password = $("password").value;
     const code = $("invite").value.trim();
-    const handle = $("new-handle").value.trim();
-    if (mode === "join") {
-      if (!code) return hint("email-hint", "Enter your invite code. Ask a member for one.", "error");
-      if (!HANDLE_RE.test(handle)) return hint("email-hint", "Handles are 3–20 characters: letters, numbers and underscores.", "error");
-    }
+    if (mode === "join" && !code) return hint("email-hint", "Enter your invite code. Ask a member for one.", "error");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return hint("email-hint", "Enter a valid email address.", "error");
     if (live && password.length < 8) return hint("email-hint", "Passwords are at least 8 characters.", "error");
     busy(e.target, true, mode === "join" ? "Joining…" : "Signing in…");
@@ -441,8 +516,6 @@
         if (!(await api.checkInvite(code))) throw new Error("That invite code is invalid or already used.");
         store.set("qube-invite", code);
         await api.signUp(email, password);
-        try { await api.claimHandle(handle, code); store.set("qube-invite", ""); }
-        catch (err) { $("handle").value = handle; hint("handle-hint", err.message, "error"); }
       } else {
         await api.signIn(email, password);
       }
@@ -457,26 +530,84 @@
   });
 
 
-  $("handle").addEventListener("input", (e) => {
-    e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
-    const ok = HANDLE_RE.test(e.target.value);
-    $("form-handle").querySelector("button").disabled = !ok;
-    hint("handle-hint", ok ? `You'll be @${e.target.value}` : "3–20 characters: letters, numbers and underscores.", ok ? "ok" : "");
-  });
+  // ---------------------------------------------------------- profile step
+  const GENDERS = [["woman", "Woman"], ["man", "Man"], ["nonbinary", "Non-binary"], ["other", "Other"], ["unspecified", "Prefer not to say"]];
+  const prof = { color: null, gender: null, needHandle: false, seed: "" };
+  function radio(container, items, onPick, render) {
+    for (const [value, label] of items) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", "false");
+      b.setAttribute("aria-label", label);
+      render(b, value, label);
+      b.addEventListener("click", () => {
+        container.querySelectorAll("[role=radio]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        onPick(value, label);
+      });
+      container.append(b);
+    }
+  }
+  radio($("swatches"), QUBE.COLORS, (value, label) => { prof.color = value; $("preview-name").textContent = label; paintPreview(); checkProfile(); },
+    (b, value, label) => { b.className = "swatch"; b.style.background = value; b.title = label; });
+  radio($("genders"), GENDERS, (value) => { prof.gender = value; checkProfile(); },
+    (b, value, label) => { b.className = "pill-opt"; b.textContent = label; });
+  const maxBirthday = new Date(); maxBirthday.setFullYear(maxBirthday.getFullYear() - 13);
+  $("birthday").max = maxBirthday.toISOString().slice(0, 10);
+  $("birthday").min = "1900-01-01";
+
+  function paintPreview() {
+    if (!prof.color) return;
+    $("preview").hidden = false;
+    $("preview-avatar").innerHTML = avatar(prof.seed, prof.color);
+    $("preview-tile").style.background = prof.color;
+    const h = prof.needHandle ? $("handle").value : (wallet && wallet.handle) || "";
+    $("preview-who").textContent = h ? "@" + h : "You";
+  }
+  function checkProfile() {
+    const h = $("handle").value;
+    const b = $("birthday").value;
+    const oldEnough = b && b <= $("birthday").max && b >= "1900-01-01";
+    const ok = (!prof.needHandle || HANDLE_RE.test(h)) && prof.color && prof.gender && oldEnough;
+    $("form-handle").querySelector("button[type=submit]").disabled = !ok;
+    if (b && !oldEnough) hint("handle-hint", "You need to be 13 or older to join QÜBE.", "error");
+    else if (prof.needHandle && h && !HANDLE_RE.test(h)) hint("handle-hint", "Usernames are 3–20 characters: letters, numbers and underscores.", "error");
+    else hint("handle-hint", "");
+    return ok;
+  }
+  $("handle").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""); paintPreview(); checkProfile(); });
+  $("birthday").addEventListener("input", checkProfile);
+  $("birthday").addEventListener("change", checkProfile);
+
+  function showProfileStep(needHandle) {
+    prof.needHandle = needHandle;
+    $("handle-set").hidden = !needHandle;
+    $("handle-invite-set").hidden = !needHandle || Boolean(store.get("qube-invite"));
+    checkProfile();
+    show("handle");
+  }
+
   $("form-handle").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const v = $("handle").value;
-    const code = store.get("qube-invite") || $("handle-invite").value.trim().toUpperCase();
-    if (!HANDLE_RE.test(v)) return;
-    if (!code) return hint("handle-hint", "Enter your invite code.", "error");
-    busy(e.target, true, "Claiming…");
+    if (!checkProfile()) return;
+    busy(e.target, true, "Saving…");
     try {
-      await api.claimHandle(v, code);
+      if (prof.needHandle) {
+        const code = store.get("qube-invite") || $("handle-invite").value.trim().toUpperCase();
+        if (!code) throw new Error("Enter your invite code.");
+        await api.claimHandle($("handle").value, code);
+        store.set("qube-invite", "");
+        prof.needHandle = false;
+        $("handle-set").hidden = true;
+        $("handle-invite-set").hidden = true;
+      }
+      await api.completeProfile(prof.color, $("birthday").value, prof.gender);
       await route();
     } catch (err) {
       hint("handle-hint", err.message, "error");
+    } finally {
       busy(e.target, false);
-      e.target.querySelector("button").disabled = true;
+      checkProfile();
     }
   });
 
@@ -496,14 +627,14 @@
       setMode(params.get("invite") || location.pathname === "/join" ? "join" : "signin");
       return show("email");
     }
+    await api.collectMines().catch(() => 0);
     wallet = await api.wallet();
-    if (!wallet) {
-      $("handle-invite-set").hidden = Boolean(store.get("qube-invite"));
-      return show("handle");
-    }
+    if (!wallet) { prof.seed = String(Date.now()); return showProfileStep(true); }
+    if (!wallet.profile_complete) { prof.seed = wallet.id; return showProfileStep(false); }
     addr = await address(wallet.id);
     renderProfile();
     show("wallet");
+    loadMetrics().catch(() => {});
     const [squares, invites, network, activity] = await Promise.all([api.mySquares(), api.invites(), api.network(), api.activity()]);
     renderAssets(squares);
     renderInvites(invites, network);
@@ -513,7 +644,7 @@
   }
 
   function renderProfile() {
-    $("avatar").innerHTML = avatar(wallet.id);
+    $("avatar").innerHTML = avatar(wallet.id, wallet.color);
     QUBE.setNavUser(wallet);
     $("who-handle").textContent = "@" + wallet.handle;
     $("addr-short").textContent = addr.slice(0, 7) + "…" + addr.slice(-4);
@@ -524,18 +655,27 @@
     $("balance").textContent = fmt.format(shownBalance);
     $("sq-owned").textContent = fmt.format(Number(wallet.squares_owned));
     const avail = Number(wallet.squares_available);
-    $("sq-sub").textContent = avail > 0 ? `${avail} to place` : "all placed";
+    $("sq-sub").textContent = avail > 0 ? `${avail} to place` : Number(wallet.unset) > 0 ? `${wallet.unset} need a type` : `${wallet.industrial} mining · ${wallet.social} social`;
     $("act-place").querySelector(".ring").classList.toggle("badge", avail > 0);
     $("act-place").querySelector(".mono").textContent = avail > 0 ? "Place" : "Sfere";
     renderSpinState();
   }
 
+  function kindGlyph(kind) {
+    const c = wallet.color || "#9aa0aa";
+    const base = `<svg viewBox="0 0 30 30"><rect x="1" y="1" width="28" height="28" fill="${kind ? c : "#fff"}" stroke="${kind ? "rgba(17,18,22,.25)" : c}" ${kind ? "" : 'stroke-dasharray="3 2"'}/>`;
+    if (kind === "residential") return base + '<rect x="8" y="8" width="14" height="14" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="2"/></svg>';
+    if (kind === "industrial") return base + '<path d="M1 10 10 1M1 19 19 1M1 28 28 1M10 29 29 10M19 29 29 19" stroke="#fff" stroke-opacity=".6" stroke-width="2.5"/></svg>';
+    if (kind === "social") return base + '<path d="M10.3 1v28M19.7 1v28M1 10.3h28M1 19.7h28" stroke="#fff" stroke-width="1.4"/></svg>';
+    return base + "</svg>";
+  }
   function renderAssets(squares) {
     const ul = $("assets");
     ul.textContent = "";
     const row = (glyph, title, sub, right) => {
       const li = document.createElement("li");
-      const g = document.createElement("span"); g.className = "glyph " + glyph;
+      const g = document.createElement("span");
+      if (glyph.startsWith("<svg")) { g.className = "glyph kind"; g.innerHTML = glyph; } else g.className = "glyph " + glyph;
       const mid = document.createElement("div");
       const t = document.createElement("div"); t.className = "t"; t.textContent = title;
       const s = document.createElement("div"); s.className = "s"; s.textContent = sub;
@@ -543,17 +683,119 @@
       li.append(g, mid, right);
       ul.append(li);
     };
+    const link = (text, href) => { const a = document.createElement("a"); a.className = "go"; a.href = href; a.textContent = text; return a; };
     const pts = document.createElement("span"); pts.className = "v"; pts.textContent = fmt.format(Number(wallet.balance));
     row("pts", "Points", "QÜBE's currency · off-chain for now", pts);
+
+    // Posts fill Social Squares in the order they were placed.
+    let postsLeft = Number(wallet.posts_used);
+    const nextMine = wallet.next_mine_at ? new Date(wallet.next_mine_at) : null;
     for (const q of squares) {
-      const a = document.createElement("a"); a.className = "go"; a.href = "/sfere#" + grid.hash(q.row, q.col); a.textContent = "View →";
-      row("sq", grid.label(q.row, q.col), `${grid.coords(q.row, q.col)} · 100 sq mi`, a);
+      const label = q.kind ? QUBE.KINDS[q.kind].label : "Untyped";
+      let sub = grid.coords(q.row, q.col);
+      if (q.kind === "social") { const n = Math.max(0, Math.min(9, postsLeft)); postsLeft -= 9; sub = `${n} of 9 posts · ` + sub; }
+      if (q.kind === "industrial") sub = "Mining 1 point a day · " + sub;
+      if (q.kind === "residential") sub = "Agent home · " + sub;
+      if (!q.kind) sub = "Needs a type · " + sub;
+      row(kindGlyph(q.kind), `${label} · ${grid.label(q.row, q.col)}`, sub, link(q.kind ? "View →" : "Choose →", "/sfere#" + grid.hash(q.row, q.col)));
     }
-    for (let i = 0; i < Number(wallet.squares_available); i++) {
-      const a = document.createElement("a"); a.className = "go"; a.href = "/sfere"; a.textContent = "Place →";
-      row("sq empty", "Unplaced Square", "Pick any open lot on the Sfere", a);
+    for (let i = 0; i < Number(wallet.squares_available); i++) row(kindGlyph(null), "Unplaced Square", "Pick any open lot on the Sfere", link("Place →", "/sfere"));
+    row("sq empty", "Sfere market", `Buy a new Square for 100 points${nextMine && Number(wallet.industrial) ? " · next mine payout " + nextMine.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }) : ""}`, link("Buy →", "/sfere#market"));
+  }
+
+  // ------------------------------------------------------------------ $POINTS
+  let stats = null, mySeries = null, view = "network";
+  async function loadMetrics() {
+    [stats, mySeries] = await Promise.all([api.pointsStats(), api.myPointsSeries()]);
+    renderMetrics();
+  }
+  for (const b of document.querySelectorAll(".seg button")) {
+    b.addEventListener("click", () => {
+      view = b.dataset.view;
+      document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+      renderMetrics();
+    });
+  }
+  function renderMetrics() {
+    if (!stats) return;
+    const series = (view === "network" ? stats.series : mySeries || []).map((d) => ({ day: d.day, v: Number(view === "network" ? d.supply : d.balance) }));
+    const now = series.length ? series[series.length - 1].v : 0;
+    const prev = series.length > 1 ? series[series.length - 2].v : 0;
+    $("m-value").textContent = fmt.format(now);
+    $("m-caption").textContent = view === "network" ? "Total supply · last 30 days" : "Your balance · last 30 days";
+    const d = now - prev;
+    const delta = $("m-delta");
+    delta.hidden = d === 0;
+    delta.querySelector("i").style.transform = d < 0 ? "rotate(180deg)" : "";
+    delta.querySelector("span").textContent = `${d > 0 ? "+" : ""}${fmt.format(d)} today${prev > 0 ? ` · ${d > 0 ? "+" : ""}${((d / prev) * 100).toFixed(1)}%` : ""}`;
+    drawChart(series);
+
+    const supply = Number(stats.supply);
+    const share = supply > 0 ? (Number(wallet.balance) / supply) * 100 : 0;
+    const tiles = [
+      ["Holders", fmt.format(Number(stats.holders)), "members holding $POINTS"],
+      ["Minted · 24h", "+" + fmt.format(Number(stats.minted_24h)), "spins, likes, mines, referrals"],
+      ["Mines", fmt.format(Number(stats.mines)), `+${fmt.format(Number(stats.daily_mine_output))} points a day`],
+      ["Spent on land", fmt.format(Number(stats.spent)), "points taken out of supply"],
+      ["Land price", fmt.format(Number(stats.land_price)), "points per Square"],
+      ["Your share", share >= 0.1 || share === 0 ? share.toFixed(1) + "%" : "<0.1%", "of all $POINTS"],
+    ];
+    const g = $("m-grid");
+    g.textContent = "";
+    for (const [k, v, sub] of tiles) {
+      const t = document.createElement("div");
+      t.className = "m-tile";
+      t.innerHTML = '<span class="mono"></span><b></b><span class="s"></span>';
+      t.children[0].textContent = k; t.children[1].textContent = v; t.children[2].textContent = sub;
+      g.append(t);
     }
   }
+
+  // Area chart: one series, accent line on a 10% wash, hairline grid, hover crosshair.
+  function drawChart(series) {
+    const svg = $("chart-svg"), box = $("chart"), tip = $("chart-tip");
+    const W = box.clientWidth, H = box.clientHeight;
+    if (!W || !series.length) return;
+    const padR = 44, padB = 22, padT = 12;
+    const max = Math.max(1, ...series.map((d) => d.v)), min = Math.min(0, ...series.map((d) => d.v));
+    const nice = (x) => { const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, x)))); return Math.ceil(x / p) * p; };
+    const top = nice(max * 1.05);
+    const X = (i) => (i / Math.max(1, series.length - 1)) * (W - padR);
+    const Y = (v) => padT + (1 - (v - min) / (top - min || 1)) * (H - padT - padB);
+    const pts = series.map((d, i) => [X(i), Y(d.v)]);
+    const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("");
+    const area = line + `L${X(series.length - 1).toFixed(1)} ${Y(min).toFixed(1)}L0 ${Y(min).toFixed(1)}Z`;
+    const ticks = [top, top / 2, min];
+    const short = (iso) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const [ex, ey] = pts[pts.length - 1];
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.innerHTML = `
+      <defs><linearGradient id="wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".16"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+      ${ticks.map((t) => `<line x1="0" x2="${W - padR}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${W - padR + 8}" y="${Y(t) + 4}" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">${fmt.format(t)}</text>`).join("")}
+      <text x="0" y="${H - 4}" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">${short(series[0].day)}</text>
+      <text x="${W - padR}" y="${H - 4}" text-anchor="end" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">Today</text>
+      <path d="${area}" fill="url(#wash)"/>
+      <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <line id="xh" x1="0" x2="0" y1="${padT}" y2="${H - padB}" stroke="var(--ink)" stroke-opacity=".25" stroke-width="1" visibility="hidden"/>
+      <circle id="hd" r="4.5" fill="var(--accent)" stroke="#fff" stroke-width="2" visibility="hidden"/>
+      <circle cx="${ex}" cy="${ey}" r="5" fill="var(--accent)" stroke="#fff" stroke-width="2"/>
+      <rect x="0" y="0" width="${W - padR}" height="${H}" fill="transparent" id="hit"/>`;
+    const hit = svg.querySelector("#hit"), xh = svg.querySelector("#xh"), hd = svg.querySelector("#hd");
+    const move = (e) => {
+      const r = svg.getBoundingClientRect();
+      const i = Math.max(0, Math.min(series.length - 1, Math.round(((e.clientX - r.left) / (W - padR)) * (series.length - 1))));
+      const [x, y] = pts[i];
+      xh.setAttribute("x1", x); xh.setAttribute("x2", x); xh.setAttribute("visibility", "visible");
+      hd.setAttribute("cx", x); hd.setAttribute("cy", y); hd.setAttribute("visibility", "visible");
+      tip.innerHTML = `<span>${short(series[i].day)}</span> <b>${fmt.format(series[i].v)}</b>`;
+      tip.style.left = Math.max(40, Math.min(W - 60, x)) + "px";
+      tip.style.opacity = 1;
+    };
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { xh.setAttribute("visibility", "hidden"); hd.setAttribute("visibility", "hidden"); tip.style.opacity = 0; });
+  }
+  new ResizeObserver(() => renderMetrics()).observe($("chart"));
 
   function renderInvites(invites, network) {
     const by = Object.fromEntries(network.map((n) => [n.level, n]));
@@ -774,6 +1016,7 @@
       renderSpinState();
       renderActivity(await api.activity());
       renderAssets(await api.mySquares());
+      loadMetrics().catch(() => {});
     } catch (err) {
       $("spin-status").textContent = err.message;
       if (/already spun/i.test(err.message)) { wallet = await api.wallet(); renderSpinState(); }
