@@ -70,15 +70,17 @@
   };
 
   // ---------------------------------------------------------------- colors
-  // A member's color is chosen once, at onboarding, and never changes.
-  // Must match qube_colors() in the database.
-  const COLORS = [
-    ["#3a3df5", "Ultramarine"], ["#e0584a", "Coral"], ["#f08a24", "Tangerine"], ["#e8b817", "Sun"],
-    ["#7cb518", "Lime"], ["#12a150", "Emerald"], ["#0fa3a3", "Teal"], ["#2d9cdb", "Sky"],
-    ["#7b4ae2", "Violet"], ["#d63384", "Magenta"], ["#f06595", "Rose"], ["#3d3f46", "Graphite"],
-  ];
+  // A member's color is chosen once, at onboarding, and never changes. Any hex works;
+  // the picker keeps lightness in a band that reads well on the white Sfere.
+  function hslToHex(h, sat, l) {
+    sat /= 100; l /= 100;
+    const k = (n) => (n + h / 30) % 12;
+    const a = sat * Math.min(l, 1 - l);
+    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return "#" + [f(0), f(8), f(4)].map((x) => Math.round(x * 255).toString(16).padStart(2, "0")).join("");
+  }
   const KINDS = {
-    residential: { label: "Residential", blurb: "Where your agent will live. Decorating comes later." },
+    residential: { label: "Residential", blurb: "Home for your agent. Your first one wakes it up." },
     industrial: { label: "Industrial", blurb: "A points mine. Earns 1 point every day, forever." },
     social: { label: "Social", blurb: "Holds 9 of your posts on the Line. You need one to post." },
   };
@@ -105,26 +107,32 @@
     const a = p(hex), b = p(other);
     return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("");
   }
-  function avatar(seed, color) {
+  // Geometry of a member's avatar, so the Cirqle agent can animate the same shape.
+  function avatarSpec(seed, color) {
     const rnd = seedRandom(String(seed));
     const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
     const g = pick(GROUNDS);
     const a = color || "#9aa0aa";
     const b = mix(a, g.bg, 0.55);
-    const rings = 1 + Math.floor(rnd() * 3);
-    const parts = [`<rect width="100" height="100" fill="${g.bg}"/>`];
+    const count = 1 + Math.floor(rnd() * 3);
+    const rings = [];
     let r = 29 + rnd() * 3;
-    for (let i = 0; i < rings; i++) {
+    for (let i = 0; i < count; i++) {
       const w = 1.6 + rnd() * 1.4;
-      const c = i === rings - 1 || rnd() < 0.5 ? a : g.ink;
-      parts.push(`<circle cx="50" cy="50" r="${r.toFixed(2)}" fill="none" stroke="${c}" stroke-width="${w.toFixed(2)}"/>`);
+      rings.push({ r, w, c: i === count - 1 || rnd() < 0.5 ? a : g.ink });
       r -= w + 2 + rnd() * 3.5;
     }
     const core = Math.min(r - 3, 10 + rnd() * 5);
     const off = rnd() < 0.25 ? (rnd() - 0.5) * 6 : 0;
-    const cx = (50 + off).toFixed(2), cy = (50 - off).toFixed(2);
-    parts.push(`<circle cx="${cx}" cy="${cy}" r="${core.toFixed(2)}" fill="${g.ink}"/>`);
-    if (rnd() < 0.7) parts.push(`<circle cx="${cx}" cy="${cy}" r="${(core * (0.28 + rnd() * 0.12)).toFixed(2)}" fill="${rnd() < 0.5 ? a : b}"/>`);
+    const dot = rnd() < 0.7 ? { r: core * (0.28 + rnd() * 0.12), c: rnd() < 0.5 ? a : b } : null;
+    return { bg: g.bg, ink: g.ink, color: a, rings, core: { r: core, x: 50 + off, y: 50 - off }, dot };
+  }
+  function avatar(seed, color) {
+    const s = avatarSpec(seed, color);
+    const parts = [`<rect width="100" height="100" fill="${s.bg}"/>`];
+    for (const ring of s.rings) parts.push(`<circle cx="50" cy="50" r="${ring.r.toFixed(2)}" fill="none" stroke="${ring.c}" stroke-width="${ring.w.toFixed(2)}"/>`);
+    parts.push(`<circle cx="${s.core.x.toFixed(2)}" cy="${s.core.y.toFixed(2)}" r="${s.core.r.toFixed(2)}" fill="${s.ink}"/>`);
+    if (s.dot) parts.push(`<circle cx="${s.core.x.toFixed(2)}" cy="${s.core.y.toFixed(2)}" r="${s.dot.r.toFixed(2)}" fill="${s.dot.c}"/>`);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-hidden="true">${parts.join("")}</svg>`;
   }
 
@@ -186,6 +194,24 @@
         }
         return rpc("create_post", { p_body: body, p_media_url: url, p_media_type: type, p_parent_id: parentId || null });
       },
+      myAgent: async () => (await rpc("my_agent"))[0] || null,
+      createAgent: (name) => rpc("create_agent", { p_name: name }),
+      async agentMessages(agentId, before) {
+        let q = sb.from("agent_messages").select("id, role, content, mood, created_at").eq("agent_id", agentId).order("id", { ascending: false }).limit(40);
+        if (before) q = q.lt("id", before);
+        return check(await q);
+      },
+      async agentFiles(agentId) { return check(await sb.from("agent_files").select("path, content, version, updated_at").eq("agent_id", agentId)); },
+      async talk(message) {
+        const { data, error } = await sb.functions.invoke("agent-chat", { body: { message } });
+        if (error) {
+          let msg = "Your agent couldn't answer. Try again in a moment.";
+          try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch {}
+          if (error.name === "FunctionsFetchError" || error.name === "FunctionsRelayError") msg = "Your agent's brain isn't switched on yet.";
+          throw new Error(msg);
+        }
+        return data;
+      },
       like: (id) => rpc("like_post", { p_id: id }),
       unlike: (id) => rpc("unlike_post", { p_id: id }),
       deletePost: (id) => rpc("delete_post", { p_id: id }),
@@ -219,26 +245,126 @@
   }
 
   // ------------------------------------------------------------------- nav
-  // One nav for every page: a top bar on desktop, a bottom tab bar on phones.
-  const ICONS = {
-    points: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>',
-    line: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6.5h16M4 12h16M4 17.5h9.5"/></svg>',
-    squares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="0.5"/><rect x="13" y="4" width="7" height="7" rx="0.5"/><rect x="4" y="13" width="7" height="7" rx="0.5"/><rect x="13" y="13" width="7" height="7" rx="0.5" fill="currentColor"/></svg>',
-    sfere: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M3.5 12h17"/></svg>',
-  };
-  const TABS = [["points", "Points", "/points"], ["line", "Line", "/line"], ["squares", "Squares", "/squares"], ["sfere", "Sfere", "/sfere"]];
+  // One menu for every page. Each page is a shape that matches its name.
+  const PAGES = [
+    { key: "points", label: "Points", note: "Your wallet", href: "/points",
+      icon: '<circle class="qn-pop" cx="12" cy="12" r="4.2" fill="currentColor"/>' },
+    { key: "line", label: "Line", note: "The feed", href: "/line",
+      icon: '<path pathLength="1" d="M4 12h16"/>' },
+    { key: "squares", label: "Squares", note: "Your land", href: "/squares",
+      icon: '<rect pathLength="1" x="5.5" y="5.5" width="13" height="13" rx="0.8"/>' },
+    { key: "sfere", label: "Sfere", note: "The globe", href: "/sfere",
+      icon: '<circle pathLength="1" cx="12" cy="12" r="8"/><path pathLength="1" d="M4 12c0 2.2 3.6 3.9 8 3.9s8-1.7 8-3.9"/>' },
+    { key: "cirqle", label: "Cirqle", note: "Your agent", href: "/cirqle",
+      icon: '<circle pathLength="1" cx="12" cy="12" r="8"/>' },
+  ];
+  const svgIcon = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${inner}</svg>`;
+
+  // A damped spring, sampled into a CSS linear() easing.
+  function springEasing(stiffness = 170, damping = 17, samples = 40) {
+    const pts = [];
+    let x = 0, v = 0;
+    const dt = 1 / 60, steps = 60 * 0.9;
+    const out = [];
+    for (let i = 0; i <= steps; i++) {
+      out.push(x);
+      const a = stiffness * (1 - x) - damping * v;
+      v += a * dt; x += v * dt;
+    }
+    for (let i = 0; i <= samples; i++) pts.push(out[Math.round((i / samples) * (out.length - 1))].toFixed(3));
+    pts[pts.length - 1] = "1";
+    return `linear(${pts.join(", ")})`;
+  }
+  const canLinear = typeof CSS !== "undefined" && CSS.supports && CSS.supports("animation-timing-function", "linear(0, 1)");
+  const SPRING = canLinear ? springEasing() : "cubic-bezier(.2, 1.25, .3, 1)";
+  const EASE_OUT = "cubic-bezier(.2, .8, .2, 1)";
 
   function nav(active, opts = {}) {
+    const current = PAGES.find((p) => p.key === active);
     const header = document.createElement("header");
     header.className = "qn" + (opts.overlay ? " qn-overlay" : "");
     header.innerHTML = `
       <a class="qn-mark" href="/" aria-label="QÜBE home">Q<span class="qn-u">U</span>BE</a>
-      <nav class="qn-tabs" aria-label="Main">
-        ${TABS.map(([key, label, href]) => `<a href="${href}" class="qn-tab"${key === active ? ' aria-current="page"' : ""}>${ICONS[key]}<span>${label}</span></a>`).join("")}
-      </nav>
+      <div class="qn-menu">
+        <button class="qn-trigger" type="button" aria-expanded="false" aria-controls="qn-panel" aria-label="Menu">
+          <span class="qn-cur">${svgIcon(current ? current.icon : '<circle class="qn-pop" cx="12" cy="12" r="2.2" fill="currentColor"/>')}</span>
+          <span class="qn-cur-label">${current ? current.label : "Menu"}</span>
+          <span class="qn-chev" aria-hidden="true"></span>
+        </button>
+        <nav class="qn-panel" id="qn-panel" aria-label="Main" hidden>
+          ${PAGES.map((p, i) => `<a href="${p.href}" class="qn-item" style="--i:${i}"${p.key === active ? ' aria-current="page"' : ""}>
+            <span class="qn-ic">${svgIcon(p.icon)}</span><span class="qn-tx"><b>${p.label}</b><small>${p.note}</small></span></a>`).join("")}
+        </nav>
+      </div>
       <div class="qn-me"><a class="qn-join" href="/join">Join</a></div>`;
+    const scrim = document.createElement("div");
+    scrim.className = "qn-scrim";
+    document.body.prepend(scrim);
     document.body.prepend(header);
     document.body.classList.add("has-qn");
+
+    const trigger = header.querySelector(".qn-trigger");
+    const panel = header.querySelector(".qn-panel");
+    const items = [...panel.querySelectorAll(".qn-item")];
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const mobile = () => matchMedia("(max-width: 760px)").matches;
+    let open = false, running = [];
+
+    const stop = () => { running.forEach((a) => a.cancel()); running = []; };
+    const play = (el, frames, o) => { const a = el.animate(frames, { fill: "both", ...o }); running.push(a); return a; };
+    // The panel grows out of the trigger: start clipped to a pill the trigger's size.
+    function pillInset() {
+      const t = trigger.getBoundingClientRect(), p = panel.getBoundingClientRect();
+      const side = Math.max(0, (p.width - t.width) / 2);
+      return mobile()
+        ? `inset(${Math.max(0, p.height - t.height)}px ${side}px 0px ${side}px round 999px)`
+        : `inset(0px ${side}px ${Math.max(0, p.height - t.height)}px ${side}px round 999px)`;
+    }
+
+    function setOpen(next, focusFirst) {
+      if (next === open) return;
+      open = next;
+      trigger.setAttribute("aria-expanded", String(open));
+      header.classList.toggle("qn-open", open);
+      stop();
+      if (open) {
+        panel.hidden = false;
+        scrim.classList.add("on");
+        if (reduce) { if (focusFirst) items[0].focus(); return; }
+        const from = pillInset();
+        const dir = mobile() ? 1 : -1;
+        play(panel, [{ clipPath: from, transform: `translateY(${dir * -6}px)` }, { clipPath: "inset(0px 0px 0px 0px round 22px)", transform: "none" }], { duration: 620, easing: SPRING });
+        items.forEach((el, i) => {
+          const order = mobile() ? items.length - 1 - i : i;
+          const delay = 70 + order * 45;
+          play(el, [{ opacity: 0, transform: `translateY(${dir * 12}px) scale(.94)`, filter: "blur(6px)" }, { opacity: 1, transform: "none", filter: "blur(0px)" }], { duration: 520, delay, easing: SPRING });
+          el.querySelectorAll("[pathLength]").forEach((path) => play(path, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 640, delay: delay + 90, easing: EASE_OUT }));
+          el.querySelectorAll(".qn-pop").forEach((dot) => play(dot, [{ transform: "scale(0)" }, { transform: "scale(1)" }], { duration: 560, delay: delay + 90, easing: SPRING }));
+        });
+        if (focusFirst) setTimeout(() => items[0].focus(), 60);
+      } else {
+        scrim.classList.remove("on");
+        if (reduce) { panel.hidden = true; return; }
+        const dir = mobile() ? 1 : -1;
+        items.forEach((el) => play(el, [{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(4px)" }], { duration: 140, easing: EASE_OUT }));
+        const a = play(panel, [{ clipPath: "inset(0px 0px 0px 0px round 22px)", transform: "none", opacity: 1 }, { clipPath: pillInset(), transform: `translateY(${dir * -4}px)`, opacity: 0 }], { duration: 260, easing: EASE_OUT });
+        a.onfinish = () => { if (!open) { panel.hidden = true; stop(); } };
+      }
+    }
+    trigger.addEventListener("click", (e) => setOpen(!open, e.detail === 0));
+    scrim.addEventListener("click", () => setOpen(false));
+    document.addEventListener("keydown", (e) => {
+      if (!open) return;
+      if (e.key === "Escape") { setOpen(false); trigger.focus(); }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const i = items.indexOf(document.activeElement);
+        const n = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+        items[n].focus();
+      }
+    });
+    document.addEventListener("pointerdown", (e) => { if (open && !header.querySelector(".qn-menu").contains(e.target)) setOpen(false); });
+
     (async () => {
       try {
         if (!(await api.hasSession())) return;
@@ -270,5 +396,5 @@
   }
 
   const api = live ? supabaseApi() : offlineApi();
-  window.QUBE = { live, grid, COLORS, KINDS, avatar, mix, address, sha256, prepareMedia, nav, setNavUser, api };
+  window.QUBE = { live, grid, KINDS, avatar, avatarSpec, hslToHex, mix, address, sha256, prepareMedia, nav, setNavUser, api, SPRING };
 })();

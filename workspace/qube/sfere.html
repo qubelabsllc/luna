@@ -304,13 +304,14 @@
     vertexShader: `
       attribute vec3 aCenter, aR, aT, aColor;
       attribute vec2 aSize, aCell;
-      attribute float aKind, aPosts;
+      attribute float aKind, aPosts, aAgent;
       uniform float uMinWorld, uPxWorld;
       varying vec2 vUv;
       varying vec3 vColor;
-      varying float vKind, vPosts, vPx;
+      varying float vKind, vPosts, vPx, vAgent;
       varying vec2 vCell;
       void main() {
+        vAgent = aAgent;
         vec2 s = max(aSize, vec2(uMinWorld));
         vec3 pos = aCenter * 1.0009 + position.x * s.x * aR + position.y * s.y * aT;
         vUv = uv; vColor = aColor; vKind = aKind; vPosts = aPosts; vCell = aCell;
@@ -323,14 +324,25 @@
       uniform vec3 uInk, uAccent;
       varying vec2 vUv;
       varying vec3 vColor;
-      varying float vKind, vPosts, vPx;
+      varying float vKind, vPosts, vPx, vAgent;
       varying vec2 vCell;
       void main() {
         vec3 base = vColor;
         vec3 soft = mix(vColor, vec3(1.0), 0.62);
         float detail = smoothstep(10.0, 22.0, vPx);   // patterns only when the tile is big enough to read
         vec3 c = base;
-        if (vKind < 0.5) {                              // residential: solid, with an inner frame
+        if (vKind < 0.5 && vAgent > 0.5) {             // residential with an agent: its circle lives here
+          float d = length(vUv - 0.5);
+          float aa = 1.5 / max(vPx, 1.0);
+          c = mix(base, soft, 0.72);
+          c = mix(c, base, 1.0 - smoothstep(0.34 - aa, 0.34, d));
+          float ring = 1.0 - smoothstep(0.0, aa * 1.2, abs(d - 0.41));
+          c = mix(c, base, ring * detail);
+          vec2 e1 = vUv - vec2(0.43, 0.53), e2 = vUv - vec2(0.57, 0.53);
+          float eyes = max(1.0 - smoothstep(0.035 - aa, 0.035, length(e1 * vec2(1.0, 0.75))),
+                           1.0 - smoothstep(0.035 - aa, 0.035, length(e2 * vec2(1.0, 0.75))));
+          c = mix(c, vec3(1.0), eyes * detail);
+        } else if (vKind < 0.5) {                       // residential: solid, with an inner frame
           float f = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
           c = mix(base, soft, detail * (1.0 - smoothstep(0.17, 0.19, f)) * smoothstep(0.12, 0.14, f));
         } else if (vKind < 1.5) {                       // industrial: mine stripes
@@ -366,7 +378,7 @@
     tileGeo = freshTileGeo();
     tiles.geometry = tileGeo;
     const A = (k) => new Float32Array(n * k);
-    const center = A(3), R = A(3), T = A(3), size = A(2), cell = A(2), col = A(3), kind = A(1), posts = A(1);
+    const center = A(3), R = A(3), T = A(3), size = A(2), cell = A(2), col = A(3), kind = A(1), posts = A(1), agentF = A(1);
     list.forEach((s, i) => {
       const c = grid.dir(s.row, s.col);
       const l = grid.dir(s.row, s.col, 0, 0.5), r = grid.dir(s.row, s.col, 1, 0.5);
@@ -382,10 +394,11 @@
       col.set([cc.r, cc.g, cc.b], i * 3);
       kind[i] = s.kind in KIND_ID ? KIND_ID[s.kind] : 3;
       posts[i] = s.posts || 0;
+      agentF[i] = s.agent_name ? 1 : 0;
     });
     const set = (name, arr, k) => tileGeo.setAttribute(name, new THREE.InstancedBufferAttribute(arr, k));
     set("aCenter", center, 3); set("aR", R, 3); set("aT", T, 3); set("aSize", size, 2);
-    set("aCell", cell, 2); set("aColor", col, 3); set("aKind", kind, 1); set("aPosts", posts, 1);
+    set("aCell", cell, 2); set("aColor", col, 3); set("aKind", kind, 1); set("aPosts", posts, 1); set("aAgent", agentF, 1);
     tileGeo.instanceCount = n;
   }
   setTiles([]);
@@ -735,8 +748,10 @@
         }
         return;
       }
-      const extra = owner.kind === "industrial" ? " · mines 1 point a day" : owner.kind === "residential" ? " · agent home" : "";
-      return setCard({ ...base, status: who + extra, swatch: owner.color, buttons: [close] });
+      const extra = owner.kind === "industrial" ? " · mines 1 point a day" : owner.kind === "residential" ? (owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet") : "";
+      const btns = [close];
+      if (isMine && owner.kind === "residential") btns.unshift(button(owner.agent_name ? `Visit ${owner.agent_name}` : "Wake your agent", null, false, "/cirqle"));
+      return setCard({ ...base, status: who + extra, swatch: owner.color, buttons: btns });
     }
 
     if (!me) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Sign in to claim", null, false, "/points"), close] });

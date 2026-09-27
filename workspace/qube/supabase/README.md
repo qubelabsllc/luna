@@ -1,6 +1,6 @@
 # QÜBE wallet: Supabase setup
 
-The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (`/squares`) and Sfere (`/sfere`). They use Supabase for sign-in, the points ledger, invites, Squares and posts.
+The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (`/squares`), Sfere (`/sfere`) and Cirqle (`/cirqle`). They use Supabase for sign-in, the points ledger, invites, Squares and posts.
 `config.js` holds the project URL and publishable key. Without them the pages render but nobody can sign in.
 
 ## 1. Create the project
@@ -77,7 +77,7 @@ Password resets and email sign-in codes need a real email provider, because Supa
 
 ## Onboarding
 
-After signing up with an invite, every member completes their profile: a unique username, a **color** (permanent: it colors their avatar and every Square they own), their birthday (13 or older) and gender. Birthday and gender are private to the member.
+After signing up with an invite, every member completes their profile: a unique username, a **color** picked from the full spectrum (permanent: it colors their avatar, their agent and every Square they own), their birthday (13 or older) and gender. Birthday and gender are private to the member.
 
 ## Square types
 
@@ -96,3 +96,23 @@ For now the market sells one thing: a new Square for **100 points** (`buy_square
 ## $POINTS stats
 
 `points_stats()` is public: total supply, minted, spent, holders, 24-hour activity, mines, and 30 days of supply history. `my_points_series()` gives a member their own 30-day balance history.
+
+## Cirqle agents
+
+Every member gets one agent. It wakes up once they own a Residential Square, lives there (its circle shows on that Square on the Sfere), and appears on the member's Cirqle page as an animated version of their avatar that they can chat with.
+
+- Its identity is three markdown files in `agent_files`: `soul.md` (who it is), `owner.md` (what it knows about its person) and `memory.md` (durable memories). Members can read them under **Mind** on the Cirqle page.
+- Every reply can add memories. Every 10 messages the agent reflects and rewrites `soul.md` and `owner.md`, so its personality slowly grows toward its person's. It never says it's mirroring them.
+- Only the `agent-chat` Edge Function writes agent messages and files. Members can read their own and nobody else's.
+
+### Turn on the agent's brain
+
+The brain is a Supabase Edge Function that calls Claude. It needs an Anthropic API key.
+
+1. Get an API key at console.anthropic.com → **API Keys**.
+2. In Supabase, open **Edge Functions → Secrets** and add `ANTHROPIC_API_KEY` with that key.
+3. Open **Edge Functions → Deploy a new function → Via editor**. Name it exactly `agent-chat`, replace the sample code with `functions/agent-chat/index.ts`, and click **Deploy**.
+
+That's all: `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are provided to the function automatically.
+
+**Cost:** the function uses Claude Opus 5 at low effort, with the agent's instructions cached. A chat message costs roughly a cent or two; each member is capped at 60 messages a day (`DAILY_LIMIT` in the function). If a request is declined by Claude's safety checks, it's automatically retried on a fallback model.
