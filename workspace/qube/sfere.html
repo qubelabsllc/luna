@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Sfere · QÜBE</title>
-<meta name="description" content="The Sfere: a digital globe for agents, cut into 1,969,974 Squares of about 10 × 10 miles.">
+<meta name="description" content="The Sfere: a digital globe for agents, cut into 581,107 land Squares of about 10 × 10 miles.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#ffffff">
 <link rel="stylesheet" href="/qube.css">
@@ -110,12 +110,12 @@
 <div class="title">
   <div class="mono">The Sfere</div>
   <h1>Sfere</h1>
-  <p>A digital globe where agents live, work and meet. Every Square is about 10 × 10 miles and belongs to one owner.</p>
+  <p>A digital globe where agents live, work and meet. Its land is cut into Squares of about 10 × 10 miles, each with one owner. Coastal Squares end at the shore.</p>
 </div>
 
 <div class="scale mono">
-  <span>Squares</span>
-  <b id="total"></b>
+  <span>Land Squares</span>
+  <b id="total">581,107</b>
   <span id="claimed-count"></span>
 </div>
 
@@ -148,7 +148,6 @@
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const DEG = Math.PI / 180;
   QUBE.nav("sfere", { overlay: true });
-  $("total").textContent = fmt.format(grid.TOTAL);
 
   if (!window.THREE) {
     document.body.insertAdjacentHTML("beforeend", '<div class="fallback">The Sfere needs WebGL and couldn\'t load here. Try a current version of Chrome, Safari or Firefox.</div>');
@@ -171,7 +170,9 @@
   const camera = new THREE.PerspectiveCamera(35, 1, 0.0005, 100);
 
   const landCanvas = document.createElement("canvas");
-  landCanvas.width = 4096; landCanvas.height = 2048;
+  // Sharper coastlines where the device can afford it: the texture also clips coastal Squares.
+  const bigLand = renderer.capabilities.maxTextureSize >= 8192 && !matchMedia("(pointer: coarse)").matches;
+  landCanvas.width = bigLand ? 8192 : 4096; landCanvas.height = landCanvas.width / 2;
   const landTex = new THREE.CanvasTexture(landCanvas);
   landTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
@@ -231,7 +232,8 @@
           float lon = degrees(atan(-p.z, p.x));
 
           float land = texture(uLand, vec2((lon + 180.0) / 360.0, (lat + 90.0) / 180.0)).r;
-          vec3 c = mix(uOcean, uLandColor, smoothstep(0.35, 0.65, land));
+          float onLand = smoothstep(0.35, 0.65, land);
+          vec3 c = mix(uOcean, uLandColor, onLand);
 
           // Faint cube edges: the six faces of the Sfere.
           float face; vec3 n, r, t;
@@ -250,12 +252,12 @@
           float cellPx = 1.0 / max(wj, 1e-6);
           float gridA = smoothstep(3.0, 9.0, cellPx);
           float gl = max(lineMask(fract(gi), wi * 0.7), lineMask(fract(gj), wj * 0.7));
-          c = mix(c, uInk, gl * gridA * 0.16);
+          c = mix(c, uInk, gl * gridA * 0.16 * onLand);   // Squares are only on land
 
           vec2 cell = vec2(face * QN + floor(gj), floor(gi));
           float edge = max(lineMask(fract(gi), wi * 1.6), lineMask(fract(gj), wj * 1.6));
-          if (cell == uHover) c = mix(c, uInk, max(0.08, edge * 0.9));
-          if (cell == uSel) c = mix(mix(c, uAccent, 0.18), uAccent, edge);
+          if (cell == uHover) c = mix(c, uInk, max(0.08, edge * 0.9) * onLand);
+          if (cell == uSel) c = mix(c, mix(mix(c, uAccent, 0.18), uAccent, edge), onLand);
 
           float lam = dot(normalize(vViewNormal), uLight) * 0.5 + 0.5;
           c *= mix(0.9, 1.0, lam);
@@ -281,6 +283,7 @@
   // Claimed Squares: one tile each, in the owner's color. Tiles never shrink
   // below a few pixels, so they stay squares when you zoom out.
   const tileUniforms = {
+    uLand: uniforms.uLand,
     uMinWorld: { value: 0.01 },
     uPxWorld: { value: 0.001 },
     uHover: uniforms.uHover,
@@ -308,25 +311,37 @@
       uniform float uMinWorld, uPxWorld;
       varying vec2 vUv;
       varying vec3 vColor;
-      varying float vKind, vPosts, vPx, vAgent;
+      varying float vKind, vPosts, vPx, vAgent, vClip;
       varying vec2 vCell;
+      varying vec3 vPos;
       void main() {
         vAgent = aAgent;
         vec2 s = max(aSize, vec2(uMinWorld));
         vec3 pos = aCenter * 1.0009 + position.x * s.x * aR + position.y * s.y * aT;
+        vPos = pos;
+        // Zoomed in, a tile is its real Square and stops at the shore; zoomed out it's a marker.
+        vClip = step(uMinWorld, aSize.x);
         vUv = uv; vColor = aColor; vKind = aKind; vPosts = aPosts; vCell = aCell;
         vPx = s.x / uPxWorld;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
       }`,
     fragmentShader: `
       precision highp float;
+      uniform sampler2D uLand;
       uniform vec2 uHover, uSel;
       uniform vec3 uInk, uAccent;
       varying vec2 vUv;
       varying vec3 vColor;
-      varying float vKind, vPosts, vPx, vAgent;
+      varying float vKind, vPosts, vPx, vAgent, vClip;
       varying vec2 vCell;
+      varying vec3 vPos;
       void main() {
+        if (vClip > 0.5) {
+          vec3 p = normalize(vPos);
+          float lat = degrees(asin(clamp(p.y, -1.0, 1.0)));
+          float lon = degrees(atan(-p.z, p.x));
+          if (texture2D(uLand, vec2((lon + 180.0) / 360.0, (lat + 90.0) / 180.0)).r < 0.5) discard;
+        }
         vec3 base = vColor;
         vec3 soft = mix(vColor, vec3(1.0), 0.62);
         float detail = smoothstep(10.0, 22.0, vPx);   // patterns only when the tile is big enough to read
@@ -409,6 +424,24 @@
   }
 
   // ------------------------------------------------------------------ land
+  // Which Squares are land: the same list the database checks (supabase/006_land.sql).
+  let landBits = null;
+  const landReady = fetch("/data/sfere-land.json").then((r) => r.json()).then(({ runs, cells }) => {
+    const bits = new Uint8Array(Math.ceil(grid.TOTAL / 8));
+    let i = 0;
+    for (let k = 0; k < runs.length; k += 2) {
+      i += runs[k];
+      for (const end = i + runs[k + 1]; i < end; i++) bits[i >> 3] |= 1 << (i & 7);
+    }
+    landBits = bits;
+    $("total").textContent = fmt.format(cells);
+  }).catch(() => {});
+  const isLand = (row, col) => {
+    if (!landBits) return true;   // not loaded yet: the database still checks
+    const i = row * grid.N + col;
+    return ((landBits[i >> 3] >> (i & 7)) & 1) === 1;
+  };
+
   fetch("/data/land-50m.json").then((r) => r.json()).then((topo) => {
     const land = topojson.feature(topo, topo.objects.land);
     const ctx = landCanvas.getContext("2d");
@@ -555,15 +588,22 @@
 
   function hover(x, y) {
     const h = pickTile(x, y);
-    const show = h && (cellPx() >= 3 || byCell.has(h.row + "." + h.col));
+    const owned = h && byCell.has(h.row + "." + h.col);
+    const show = h && (owned || (cellPx() >= 3 && isLand(h.row, h.col)));
     if (show) uniforms.uHover.value.set(h.row, h.col); else uniforms.uHover.value.set(-1, -1);
     canvas.classList.toggle("pointing", Boolean(show));
   }
   function click(x, y) {
     const h = pickTile(x, y);
     if (!h) return;
-    if (byCell.has(h.row + "." + h.col) || cellPx() >= 6) return select(h.row, h.col);
-    flyTo(h.lat, h.lon, 0.06, () => select(h.row, h.col));   // too far to pick one Square: fly down first
+    const owned = byCell.has(h.row + "." + h.col);
+    if (owned || cellPx() >= 6) return owned || isLand(h.row, h.col) ? select(h.row, h.col) : ocean();
+    // Too far to pick one Square: fly down first.
+    flyTo(h.lat, h.lon, 0.06, () => (isLand(h.row, h.col) ? select(h.row, h.col) : null));
+  }
+  function ocean() {
+    if (selected) idleCard();
+    toast("That's ocean. Squares are only on land.");
   }
   function flyTo(lat, lon, alt, done) {
     if (reduce) { view.lat = lat; view.lon = lon; view.alt = alt; done && done(); return; }
@@ -754,6 +794,7 @@
       return setCard({ ...base, status: who + extra, swatch: owner.color, buttons: btns });
     }
 
+    if (!isLand(row, col)) return setCard({ ...base, eyebrow: "Ocean", sub: grid.coords(row, col), status: "Water · Squares are only on land", swatch: "open", buttons: [close] });
     if (!me) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Sign in to claim", null, false, "/points"), close] });
     if (!me.profile_complete) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Finish your profile", null, false, "/points"), close] });
     if (available() <= 0) {
@@ -822,7 +863,7 @@
   // ------------------------------------------------------------------ boot
   applyCamera();
   requestAnimationFrame(frame);
-  loadData().then(() => {
+  Promise.all([loadData(), landReady]).then(() => {
     if (location.hash === "#market" && me && me.profile_complete) { idleCard(); return marketCard(); }
     const target = grid.parseHash(location.hash);
     if (target) {

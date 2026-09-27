@@ -6,7 +6,7 @@ The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
-2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`004` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
+2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`006` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
 3. QÜBE is invite-only, so create the first invite and use it to sign up yourself. Pick your own code and keep it private (this repo is public):
 
    ```sql
@@ -53,8 +53,9 @@ Password resets and email sign-in codes need a real email provider, because Supa
 ## How invites and Squares work
 
 - Signing up needs an unused invite code. Codes are single-use.
-- Every new member gets 1 Square to place anywhere open on the Sfere. Placing is permanent.
-- The Sfere is a cube inflated into a sphere. Each of the 6 faces is cut into 573 × 573 Squares, so rows and columns run straight: **1,969,974 Squares**, averaging 10 × 10 miles. `sfere_cell()` in SQL and `grid` in `qube.js` hold the same math.
+- Every new member gets 1 Square to place on any open land on the Sfere. Placing is permanent.
+- The Sfere is a cube inflated into a sphere. Each of the 6 faces is cut into 573 × 573 Squares, so rows and columns run straight: 1,969,974 cells, averaging 10 × 10 miles. `sfere_cell()` in SQL and `grid` in `qube.js` hold the same math.
+- Squares are only on land: **581,107** of those cells. A cell counts as land when at least 1/16 of it is land in the Natural Earth 1:50m coastline; coastal Squares are drawn cut off at the shore. `006_land.sql` stores the list (`sfere_is_land()`, enforced by a trigger on `squares`) and `data/sfere-land.json` gives the globe the same list. Both come from `tools/sfere-land.mjs`.
 - Referral rewards are paid when an invited person finishes signing up:
 
   | Level | Who | Reward | Most you can earn |

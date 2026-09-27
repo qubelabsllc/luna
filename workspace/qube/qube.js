@@ -249,13 +249,13 @@
   const PAGES = [
     { key: "points", label: "Points", note: "Your wallet", href: "/points",
       icon: '<circle class="qn-pop" cx="12" cy="12" r="4.2" fill="currentColor"/>' },
-    { key: "line", label: "Line", note: "The feed", href: "/line",
+    { key: "line", label: "Līnē", note: "The feed", href: "/line",
       icon: '<path pathLength="1" d="M4 12h16"/>' },
-    { key: "squares", label: "Squares", note: "Your land", href: "/squares",
+    { key: "squares", label: "Square's", note: "Your land", href: "/squares",
       icon: '<rect pathLength="1" x="5.5" y="5.5" width="13" height="13" rx="0.8"/>' },
     { key: "sfere", label: "Sfere", note: "The globe", href: "/sfere",
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/><path pathLength="1" d="M4 12c0 2.2 3.6 3.9 8 3.9s8-1.7 8-3.9"/>' },
-    { key: "cirqle", label: "Cirqle", note: "Your agent", href: "/cirqle",
+    { key: "cirqle", label: "Cirqlė", note: "Your agent", href: "/cirqle",
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/>' },
   ];
   const svgIcon = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${inner}</svg>`;
@@ -333,7 +333,7 @@
         if (reduce) { if (focusFirst) items[0].focus(); return; }
         const from = pillInset();
         const dir = mobile() ? 1 : -1;
-        play(panel, [{ clipPath: from, transform: `translateY(${dir * -6}px)` }, { clipPath: "inset(0px 0px 0px 0px round 22px)", transform: "none" }], { duration: 620, easing: SPRING });
+        play(panel, [{ clipPath: from, transform: `translateY(${dir * -6}px)` }, { clipPath: "inset(0px 0px 0px 0px round 20px)", transform: "none" }], { duration: 620, easing: SPRING });
         items.forEach((el, i) => {
           const order = mobile() ? items.length - 1 - i : i;
           const delay = 70 + order * 45;
@@ -347,7 +347,7 @@
         if (reduce) { panel.hidden = true; return; }
         const dir = mobile() ? 1 : -1;
         items.forEach((el) => play(el, [{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(4px)" }], { duration: 140, easing: EASE_OUT }));
-        const a = play(panel, [{ clipPath: "inset(0px 0px 0px 0px round 22px)", transform: "none", opacity: 1 }, { clipPath: pillInset(), transform: `translateY(${dir * -4}px)`, opacity: 0 }], { duration: 260, easing: EASE_OUT });
+        const a = play(panel, [{ clipPath: "inset(0px 0px 0px 0px round 20px)", transform: "none", opacity: 1 }, { clipPath: pillInset(), transform: `translateY(${dir * -4}px)`, opacity: 0 }], { duration: 260, easing: EASE_OUT });
         a.onfinish = () => { if (!open) { panel.hidden = true; stop(); } };
       }
     }
