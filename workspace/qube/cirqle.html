@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cirqle · QÜBE</title>
+<meta name="description" content="Your Cirqle: the agent that lives in your Residential Square on QÜBE.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/qube.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --ink: #111216;
+    --muted: #6b6f78;
+    --faint: #f5f6f8;
+    --line: #e4e6ea;
+    --accent: #3a3df5;
+    --danger: #c2261d;
+    --me: #3a3df5;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 5vw, 64px);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .btn { border: 0; border-radius: 999px; background: var(--ink); color: #fff; padding: 12px 20px; cursor: pointer; font: 500 14px/1 var(--body); text-decoration: none; display: inline-block; transition: background .2s, transform .2s cubic-bezier(.2,1.4,.4,1); }
+  .btn:hover:not(:disabled) { background: var(--me); }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn:disabled { opacity: .35; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .linklike { background: none; border: 0; padding: 0; cursor: pointer; }
+
+  main { max-width: 1120px; margin: 0 auto; padding: 0 var(--gutter) 48px; }
+  .loading { padding-block: 120px; }
+
+  /* ---------- layout */
+  .home { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; padding-top: 8px; }
+  .left { display: flex; flex-direction: column; align-items: center; gap: 22px; position: sticky; top: 16px; }
+  .stage { position: relative; width: min(100%, 380px); aspect-ratio: 1 / 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .stage svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .shadow { position: absolute; left: 50%; bottom: 4%; width: 46%; height: 5%; margin-left: -23%; border-radius: 50%; background: radial-gradient(closest-side, rgba(17,18,22,.14), rgba(17,18,22,0)); }
+  .zz { font: 300 12px/1 var(--display); fill: var(--muted); }
+
+  .who { text-align: center; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .who h1 { margin: 0; font: 300 clamp(30px, 4vw, 40px)/1.05 var(--display); }
+  .mood { display: inline-flex; align-items: center; gap: 8px; }
+  .mood i { width: 8px; height: 8px; border-radius: 50%; background: var(--me); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); width: min(100%, 380px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .stat { padding: 12px 0; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+  .stat + .stat { border-left: 1px solid var(--line); }
+  .stat b { font: 300 22px/1 var(--display); font-variant-numeric: tabular-nums; }
+  .row-links { display: flex; gap: 20px; }
+
+  /* ---------- chat */
+  .chat { display: flex; flex-direction: column; height: min(720px, calc(100svh - 120px)); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: #fff; }
+  .chat-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .msgs { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
+  .msg { max-width: 82%; font-size: 15.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; animation: rise .45s cubic-bezier(.2,1.2,.3,1) both; }
+  .msg.agent { align-self: flex-start; display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; }
+  .msg.agent::before { content: ""; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--me); }
+  .msg.user { align-self: flex-end; background: var(--faint); padding: 10px 14px; border-radius: 18px 18px 6px 18px; }
+  .msg.note { align-self: center; font-size: 13px; color: var(--muted); text-align: center; max-width: 90%; }
+  .msg.note.err { color: var(--danger); }
+  .typing { align-self: flex-start; display: inline-flex; gap: 5px; padding: 8px 0 8px 20px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--me); opacity: .35; animation: dot 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes dot { 30% { opacity: 1; transform: translateY(-3px); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+  .earlier { align-self: center; }
+  .composer { display: flex; align-items: flex-end; gap: 10px; padding: 12px; border-top: 1px solid var(--line); }
+  .composer textarea { flex: 1; resize: none; border: 0; outline: 0; background: var(--faint); border-radius: 22px; padding: 12px 16px; font: 400 15.5px/1.4 var(--body); color: var(--ink); max-height: 140px; min-height: 46px; }
+  .send { width: 46px; height: 46px; flex: none; border: 0; border-radius: 50%; background: var(--ink); color: #fff; cursor: pointer; display: grid; place-items: center; transition: background .2s, transform .25s cubic-bezier(.2,1.4,.4,1); }
+  .send:hover:not(:disabled) { background: var(--me); }
+  .send:disabled { opacity: .25; cursor: default; }
+  .send:active:not(:disabled) { transform: scale(.9); }
+  .send svg { width: 18px; height: 18px; }
+
+  /* ---------- mind */
+  dialog { border: 0; border-radius: 20px; padding: 0; width: min(640px, calc(100vw - 32px)); max-height: min(80svh, 720px); box-shadow: 0 30px 80px rgba(17,18,22,.2); }
+  dialog::backdrop { background: rgba(255,255,255,.7); backdrop-filter: blur(6px); }
+  .mind-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; }
+  .mind-tabs { display: flex; gap: 18px; padding: 14px 22px 0; }
+  .mind-tabs button { border: 0; background: none; cursor: pointer; padding: 0 0 10px; font: 400 12px/1 var(--mono); color: var(--muted); border-bottom: 1px solid transparent; }
+  .mind-tabs button[aria-selected="true"] { color: var(--ink); border-color: var(--ink); }
+  .mind-body { margin: 0; padding: 18px 22px 24px; font: 400 13.5px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+  .mind-note { padding: 0 22px 20px; font-size: 13px; color: var(--muted); }
+
+  /* ---------- gates */
+  .gate { max-width: 520px; margin: 0 auto; padding-top: 8px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; }
+  .gate h1 { margin: 0; font: 300 clamp(28px, 4.4vw, 40px)/1.1 var(--display); text-wrap: balance; }
+  .gate p { margin: 0; color: var(--muted); max-width: 42ch; }
+  .gate .stage { width: min(100%, 300px); }
+  .name-field { display: flex; align-items: baseline; gap: 4px; border-bottom: 1px solid var(--ink); padding: 6px 0 10px; width: min(100%, 320px); }
+  .name-field input { flex: 1; border: 0; outline: 0; background: transparent; text-align: center; font: 300 26px/1.2 var(--display); color: var(--ink); min-width: 0; }
+  .name-field:focus-within { border-color: var(--me); }
+  .gate .err { color: var(--danger); font-size: 14px; min-height: 1.4em; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+  @media (max-width: 860px) {
+    .home { grid-template-columns: 1fr; gap: 24px; }
+    .left { position: static; }
+    .stage { width: min(100%, 300px); }
+    .chat { height: min(640px, calc(100svh - 200px)); }
+  }
+  @media (prefers-reduced-motion: reduce) { .msg, .typing span { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="loading mono" id="loading">Waking up…</section>
+
+  <!-- Not signed in -->
+  <section class="gate" id="gate-guest" hidden>
+    <div class="stage" id="stage-guest"></div>
+    <div class="mono">Cirqle</div>
+    <h1>Every member has an agent.</h1>
+    <p>It lives in your Residential Square on the Sfere, learns from every conversation, and grows into its own little mind.</p>
+    <div class="btns"><a class="btn" href="/points">Sign in</a><a class="btn ghost" href="/join">Join with an invite</a></div>
+  </section>
+
+  <!-- No Residential Square yet -->
+  <section class="gate" id="gate-home" hidden>
+    <div class="stage" id="stage-home"></div>
+    <div class="mono">Your agent is waiting</div>
+    <h1>It needs a home first.</h1>
+    <p>Your agent wakes up once you own a Residential Square. Place one on the Sfere, or buy a Square for 100 points and make it Residential.</p>
+    <div class="btns"><a class="btn" href="/sfere">Go to the Sfere</a><a class="btn ghost" href="/sfere#market">Buy a Square</a></div>
+  </section>
+
+  <!-- Has a home, no agent yet -->
+  <section class="gate" id="gate-hatch" hidden>
+    <div class="stage" id="stage-hatch"></div>
+    <div class="mono" id="hatch-where">Something is stirring</div>
+    <h1>Name your agent.</h1>
+    <p>You only get one, and its name is for good. It will learn who it is from talking with you.</p>
+    <label class="name-field"><input id="agent-name" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Mochi" aria-label="Agent name"></label>
+    <div class="err" id="hatch-err" role="alert"></div>
+    <button class="btn" id="wake" type="button" disabled>Wake it up</button>
+  </section>
+
+  <!-- The agent -->
+  <section class="home" id="home" hidden>
+    <div class="left">
+      <div class="stage" id="stage" role="img" aria-label="Your agent"><div class="shadow"></div></div>
+      <div class="who">
+        <h1 id="agent-name-h"></h1>
+        <span class="mono mood"><i></i><span id="mood-text"></span></span>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="mono">Age</span><b id="st-age">1</b></div>
+        <div class="stat"><span class="mono">Bond</span><b id="st-bond">0</b></div>
+        <div class="stat"><span class="mono">Memories</span><b id="st-mem">0</b></div>
+      </div>
+      <div class="row-links mono">
+        <a id="home-link" href="/sfere">Home</a>
+        <button class="linklike mono" id="open-mind" type="button">Mind</button>
+      </div>
+    </div>
+
+    <section class="chat" aria-label="Chat with your agent">
+      <div class="chat-head"><span class="mono" id="chat-title">Talk</span><span class="mono" id="chat-meta"></span></div>
+      <div class="msgs" id="msgs" aria-live="polite"></div>
+      <form class="composer" id="composer">
+        <textarea id="input" rows="1" maxlength="2000" placeholder="Say something…" aria-label="Message"></textarea>
+        <button class="send" id="send" type="submit" disabled aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button>
+      </form>
+    </section>
+  </section>
+</main>
+
+<dialog id="mind" aria-labelledby="mind-title">
+  <div class="mind-head"><span class="mono" id="mind-title">Mind</span><button class="linklike mono" id="close-mind" type="button">Close</button></div>
+  <div class="mind-tabs" role="tablist"></div>
+  <pre class="mind-body" id="mind-body"></pre>
+  <p class="mind-note">These files are your agent's identity and memory. It rewrites them as it gets to know you.</p>
+</dialog>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="/qube.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { api, grid, avatarSpec } = window.QUBE;
+  QUBE.nav("cirqle");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fmt = new Intl.NumberFormat("en-US");
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.append(n); return n; };
+
+  // ======================================================== the agent
+  // A living version of the member's avatar: rings breathe and drift, the core
+  // gets eyes (the Ü's dots) and a mouth, and moods change how it all moves.
+  const MOODS = {
+    calm:       { label: "Calm",       bounce: 0,    wiggle: 0,  breathe: 1,   eyes: "open",  tilt: 0,  look: [0, 0] },
+    happy:      { label: "Happy",      bounce: 0.55, wiggle: 0,  breathe: 1.1, eyes: "happy", tilt: 0,  look: [0, 0], mouth: "smile" },
+    curious:    { label: "Curious",    bounce: 0,    wiggle: 0,  breathe: 1,   eyes: "open",  tilt: 9,  look: [0.5, -0.3], big: 1.15 },
+    playful:    { label: "Playful",    bounce: 0.35, wiggle: 7,  breathe: 1.2, eyes: "open",  tilt: 0,  look: [0, 0], mouth: "smile" },
+    thoughtful: { label: "Thoughtful", bounce: 0,    wiggle: 0,  breathe: 0.7, eyes: "open",  tilt: -5, look: [-0.6, -0.7] },
+    excited:    { label: "Excited",    bounce: 1,    wiggle: 3,  breathe: 1.5, eyes: "happy", tilt: 0,  look: [0, 0], mouth: "open", ripple: true },
+    sleepy:     { label: "Sleepy",     bounce: 0,    wiggle: 0,  breathe: 0.5, eyes: "closed", tilt: 4, look: [0, 0.4], zz: true },
+    sad:        { label: "A little sad", bounce: 0,  wiggle: 0,  breathe: 0.6, eyes: "sad",   tilt: -3, look: [0, 0.6], sink: 3 },
+    shy:        { label: "Shy",        bounce: 0,    wiggle: 0,  breathe: 0.9, eyes: "open",  tilt: 6,  look: [0.3, 0.7], blush: true },
+    thinking:   { label: "Thinking",   bounce: 0,    wiggle: 0,  breathe: 0.8, eyes: "open",  tilt: -4, look: [0.55, -0.8], orbit: 3 },
+    listening:  { label: "Listening",  bounce: 0,    wiggle: 0,  breathe: 1,   eyes: "open",  tilt: 5,  look: [0.7, 0.35], lean: 5 },
+    asleep:     { label: "Dormant",    bounce: 0,    wiggle: 0,  breathe: 0.35, eyes: "closed", tilt: 0, look: [0, 0.3], zz: true },
+  };
+
+  function createAgent(container, spec, opts = {}) {
+    const svg = el("svg", { viewBox: "-25 -25 150 150", "aria-hidden": "true" });
+    container.prepend(svg);
+    const grey = opts.grey;
+    const col = grey ? "#c9ccd2" : spec.color;
+    const ink = grey ? "#d8dbe0" : spec.ink;
+    const ground = grey ? "#f3f4f6" : spec.bg;
+    const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+    const eyeColor = grey ? "#9ea3ab" : lum(ink) > 0.55 ? "#111216" : "#ffffff";
+
+    const body = el("g", {}, svg);
+    const ripples = el("g", {}, body);
+    const disc = el("circle", { cx: 50, cy: 50, r: 44, fill: ground }, body);
+    const rings = spec.rings.map((r, i) => ({
+      node: el("circle", { cx: 50, cy: 50, r: r.r, fill: "none", stroke: grey ? (i % 2 ? "#d3d6db" : "#c3c7ce") : r.c, "stroke-width": r.w, "stroke-linecap": "round" }, body),
+      base: r.r, w: r.w, speed: 0.6 + i * 0.35, phase: i * 1.7,
+    }));
+    const coreG = el("g", {}, body);
+    const coreR = spec.core.r;
+    const core = el("circle", { cx: 0, cy: 0, r: coreR, fill: ink }, coreG);
+    const face = el("g", {}, coreG);
+    const blush = [-1, 1].map((s) => el("ellipse", { cx: s * coreR * 0.55, cy: coreR * 0.28, rx: coreR * 0.2, ry: coreR * 0.11, fill: col, opacity: 0 }, face));
+    const eyes = [-1, 1].map((s) => {
+      const g = el("g", { transform: `translate(${s * coreR * 0.36} ${-coreR * 0.08})` }, face);
+      const open = el("ellipse", { cx: 0, cy: 0, rx: coreR * 0.13, ry: coreR * 0.19, fill: eyeColor }, g);
+      const arc = el("path", { d: "", fill: "none", stroke: eyeColor, "stroke-width": coreR * 0.09, "stroke-linecap": "round" }, g);
+      return { g, open, arc, side: s };
+    });
+    const mouth = el("path", { d: "", fill: "none", stroke: grey ? "#b4b8bf" : col, "stroke-width": coreR * 0.09, "stroke-linecap": "round" }, face);
+    const zz = el("g", {}, svg);
+
+    const st = {
+      mood: opts.mood || "calm", t0: performance.now(), blinkAt: 0, blink: 0,
+      y: 0, vy: 0, sx: 1, sy: 1, vsx: 0, rot: 0, look: [0, 0], lookT: [0, 0], pointer: null,
+      lastHop: 0, lastZ: 0, zs: [], grow: opts.hatch ? 0 : 1, eyeOpen: opts.hatch ? 0 : 1, ripples: [],
+    };
+    const api = {
+      set mood(m) { st.mood = MOODS[m] ? m : "calm"; },
+      get mood() { return st.mood; },
+      poke() { st.vsx += 0.09; st.vy -= 1.8; api.flash("happy", 1800); },
+      flash(m, ms) { const prev = st.mood; st.mood = m; clearTimeout(st.flashT); st.flashT = setTimeout(() => { if (st.mood === m) st.mood = prev; }, ms); },
+      ripple() { st.ripples.push({ t: performance.now() }); },
+      hatch() { st.hatching = performance.now(); },
+      lookAt(x, y) { st.pointer = x == null ? null : [x, y]; },
+      destroy() { cancelAnimationFrame(st.raf); svg.remove(); },
+    };
+
+    const spring = (x, v, target, k, d, dt) => { const a = k * (target - x) - d * v; v += a * dt; return [x + v * dt, v]; };
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const t = (now - st.t0) / 1000;
+      const M = MOODS[st.mood] || MOODS.calm;
+
+      if (st.hatching) {
+        const h = Math.min(1, (now - st.hatching) / 1600);
+        st.grow = 1 - Math.pow(1 - h, 3) * Math.cos(h * 7) * (1 - h);
+        st.eyeOpen = Math.max(0, (h - 0.7) / 0.3);
+        if (h === 1) { st.hatching = 0; api.ripple(); api.flash("excited", 2400); }
+      }
+
+      // Breathing, hops and squash.
+      const breathe = Math.sin(t * Math.PI * 2 / (3.4 / M.breathe)) * 0.022;
+      if (M.bounce && now - st.lastHop > 1500 / (0.6 + M.bounce) && !reduce) { st.vy -= 3.2 * M.bounce + 0.8; st.vsx -= 0.05; st.lastHop = now; }
+      [st.y, st.vy] = spring(st.y, st.vy, M.sink || 0, 120, 9, dt);
+      [st.sx, st.vsx] = spring(st.sx, st.vsx, 1, 220, 11, dt);
+      const stretch = Math.max(-0.08, Math.min(0.08, -st.vy * 0.004));
+      const sx = (st.sx + breathe) * (1 - stretch) * st.grow, sy = (2 - st.sx + breathe) * (1 + stretch) * st.grow;
+      const wig = M.wiggle ? Math.sin(t * 5) * M.wiggle : 0;
+      const targetRot = M.tilt + wig + (M.lean || 0);
+      st.rot += (targetRot - st.rot) * Math.min(1, dt * 6);
+      const lean = M.lean ? 3 : 0;
+      body.setAttribute("transform", `translate(${50 + lean} ${50 + st.y}) rotate(${st.rot}) scale(${sx} ${sy}) translate(-50 -50)`);
+
+      // Rings drift and breathe on their own rhythms.
+      rings.forEach((r, i) => {
+        const orbit = (M.orbit || 1) * r.speed;
+        const ox = Math.cos(t * orbit + r.phase) * 0.7, oy = Math.sin(t * orbit * 0.8 + r.phase) * 0.7;
+        const rr = r.base * (1 + Math.sin(t * 1.3 * r.speed + r.phase) * 0.018);
+        r.node.setAttribute("cx", 50 + ox); r.node.setAttribute("cy", 50 + oy); r.node.setAttribute("r", Math.max(0.5, rr));
+      });
+
+      // Ripples: rings of color that spread out when something good happens.
+      st.ripples = st.ripples.filter((rp) => {
+        const k = (now - rp.t) / 1100;
+        if (k >= 1) { rp.n && rp.n.remove(); return false; }
+        rp.n = rp.n || el("circle", { cx: 50, cy: 50, fill: "none", stroke: col, "stroke-width": 1.2 }, ripples);
+        rp.n.setAttribute("r", 44 + k * 18); rp.n.setAttribute("opacity", (1 - k) * 0.6);
+        return true;
+      });
+      if (M.ripple && now - (st.lastRipple || 0) > 1400 && !reduce) { api.ripple(); st.lastRipple = now; }
+
+      // Core follows the gaze a little; eyes follow it more.
+      let lx = M.look[0], ly = M.look[1];
+      if (st.pointer && (st.mood === "calm" || st.mood === "happy" || st.mood === "curious" || st.mood === "playful")) { lx = st.pointer[0]; ly = st.pointer[1]; }
+      st.look[0] += (lx - st.look[0]) * Math.min(1, dt * 5); st.look[1] += (ly - st.look[1]) * Math.min(1, dt * 5);
+      const cx = spec.core.x + st.look[0] * 2.2, cy = spec.core.y + st.look[1] * 2.2;
+      coreG.setAttribute("transform", `translate(${cx} ${cy})`);
+      face.setAttribute("transform", `translate(${st.look[0] * coreR * 0.22} ${st.look[1] * coreR * 0.2})`);
+
+      // Blinks.
+      if (!st.blinkAt) st.blinkAt = now + 1800 + Math.random() * 3500;
+      if (now > st.blinkAt) { st.blink = 1; if (now > st.blinkAt + 130) { st.blink = 0; st.blinkAt = now + 2200 + Math.random() * 4200; if (Math.random() < 0.2) st.blinkAt = now + 220; } }
+
+      const big = M.big || 1;
+      eyes.forEach((e) => {
+        const kind = M.eyes;
+        const w = coreR * 0.15, h = coreR * 0.2;
+        const scaleY = (kind === "open" ? (st.blink ? 0.1 : 1) : 1) * st.eyeOpen;
+        e.open.setAttribute("visibility", kind === "open" && st.eyeOpen > 0.05 ? "visible" : "hidden");
+        e.open.setAttribute("transform", `scale(${e.side > 0 ? big : 1} ${scaleY * (e.side > 0 ? big : 1)})`);
+        let d = "";
+        if (kind === "happy") d = `M${-w} ${h * 0.25} Q0 ${-h * 0.9} ${w} ${h * 0.25}`;
+        if (kind === "closed" || st.eyeOpen < 0.05) d = `M${-w} 0 Q0 ${h * 0.55} ${w} 0`;
+        if (kind === "sad") d = `M${-w} ${-h * 0.15 * e.side} L${w} ${h * 0.15 * e.side}`;
+        e.arc.setAttribute("d", d);
+      });
+      const mw = coreR * 0.22, my = coreR * 0.42;
+      mouth.setAttribute("d", M.mouth === "smile" ? `M${-mw} ${my} Q0 ${my + coreR * 0.2} ${mw} ${my}` : M.mouth === "open" ? `M${-mw * 0.6} ${my} Q0 ${my + coreR * 0.34} ${mw * 0.6} ${my} Z` : "");
+      mouth.setAttribute("fill", M.mouth === "open" ? (grey ? "#b4b8bf" : col) : "none");
+      blush.forEach((b) => b.setAttribute("opacity", M.blush || st.mood === "happy" ? 0.55 : 0));
+
+      // Z's drift up while sleepy.
+      if (M.zz && now - st.lastZ > 1600 && !reduce) {
+        st.lastZ = now;
+        const n = el("text", { class: "zz", x: 78, y: 26 }, zz); n.textContent = "z"; st.zs.push({ n, t: now });
+      }
+      st.zs = st.zs.filter((z) => {
+        const k = (now - z.t) / 2600;
+        if (k >= 1) { z.n.remove(); return false; }
+        z.n.setAttribute("transform", `translate(${Math.sin(k * 6) * 3 + k * 8} ${-k * 26}) scale(${0.8 + k * 0.7})`);
+        z.n.setAttribute("opacity", Math.sin(k * Math.PI));
+        return true;
+      });
+
+      st.raf = requestAnimationFrame(frame);
+    }
+    st.raf = requestAnimationFrame(frame);
+    return api;
+  }
+
+  // ======================================================== page state
+  let me = null, agent = null, pet = null, busy = false;
+
+  function show(id) { for (const s of ["loading", "gate-guest", "gate-home", "gate-hatch", "home"]) $(s).hidden = s !== id; }
+
+  async function boot() {
+    const signedIn = await api.hasSession().catch(() => false);
+    if (!signedIn) {
+      createAgent($("stage-guest"), avatarSpec("qube-guest", "#3a3df5"), { mood: "curious" });
+      return show("gate-guest");
+    }
+    me = await api.wallet();
+    if (!me || !me.profile_complete) return; // the nav sends unfinished profiles to onboarding
+    document.documentElement.style.setProperty("--me", me.color);
+    agent = await api.myAgent();
+    if (agent) return openHome();
+    if (Number(me.residential) === 0) {
+      createAgent($("stage-home"), avatarSpec(me.id, me.color), { grey: true, mood: "asleep" });
+      return show("gate-home");
+    }
+    // A home exists: time to hatch.
+    const egg = createAgent($("stage-hatch"), avatarSpec(me.id, me.color), { mood: "sleepy", hatch: false, grey: true });
+    show("gate-hatch");
+    $("agent-name").focus();
+    $("agent-name").addEventListener("input", () => { $("wake").disabled = !$("agent-name").value.trim(); $("hatch-err").textContent = ""; });
+    $("agent-name").addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("wake").disabled) $("wake").click(); });
+    $("wake").addEventListener("click", async () => {
+      $("wake").disabled = true; $("wake").textContent = "Waking…";
+      try {
+        await api.createAgent($("agent-name").value.trim());
+        agent = await api.myAgent();
+        egg.destroy();
+        openHome(true);
+      } catch (err) {
+        $("hatch-err").textContent = err.message;
+        $("wake").disabled = false; $("wake").textContent = "Wake it up";
+      }
+    });
+  }
+
+  function daysSince(iso) { return Math.max(1, Math.ceil((Date.now() - new Date(iso)) / 86400000)); }
+
+  async function openHome(justHatched) {
+    show("home");
+    const night = new Date().getHours() < 6;
+    pet = createAgent($("stage"), avatarSpec(me.id, me.color), { mood: agent.mood || "calm", hatch: justHatched });
+    if (justHatched) pet.hatch(); else if (night) pet.mood = "sleepy";
+    $("agent-name-h").textContent = agent.name;
+    $("chat-title").textContent = "Talk to " + agent.name;
+    $("stage").setAttribute("aria-label", `${agent.name}, your agent`);
+    $("home-link").href = "/sfere#" + grid.hash(agent.home_row, agent.home_col);
+    $("home-link").textContent = "Home · " + grid.label(agent.home_row, agent.home_col);
+    renderStats();
+
+    // Pet it. Look at the pointer.
+    $("stage").addEventListener("click", () => pet.poke());
+    window.addEventListener("pointermove", (e) => {
+      const r = $("stage").getBoundingClientRect();
+      const x = (e.clientX - (r.left + r.width / 2)) / (r.width * 1.2), y = (e.clientY - (r.top + r.height / 2)) / (r.height * 1.2);
+      pet.lookAt(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)));
+    });
+    // Idle long enough and it dozes off.
+    let idleT;
+    const wake = () => { clearTimeout(idleT); if (pet.mood === "sleepy" && !busy) pet.mood = "calm"; idleT = setTimeout(() => { if (!busy) pet.mood = "sleepy"; }, 90000); };
+    ["pointerdown", "keydown"].forEach((ev) => window.addEventListener(ev, wake));
+    wake();
+
+    const rows = (await api.agentMessages(agent.id)).reverse();
+    oldest = rows.length ? rows[0].id : null;
+    $("msgs").textContent = "";
+    if (rows.length === 40) addEarlier();
+    rows.forEach((m) => addMsg(m.role, m.content, false));
+    scrollDown(false);
+    setupComposer();
+  }
+
+  function renderStats() {
+    $("mood-text").textContent = (MOODS[pet.mood] || MOODS.calm).label;
+    $("st-age").textContent = "Day " + daysSince(agent.created_at);
+    $("st-bond").textContent = fmt.format(agent.messages_count || 0);
+    $("st-mem").textContent = fmt.format(agent.memories || 0);
+    $("chat-meta").textContent = agent.last_talked_at ? "Last talked " + new Date(agent.last_talked_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+  }
+
+  // ======================================================== chat
+  let oldest = null;
+  function addMsg(role, text, animate = true, before) {
+    const d = document.createElement("div");
+    d.className = "msg " + (role === "user" ? "user" : role === "agent" ? "agent" : "note" + (role === "error" ? " err" : ""));
+    if (!animate) d.style.animation = "none";
+    if (role === "agent") { const s = document.createElement("span"); s.textContent = text; d.append(s); } else d.textContent = text;
+    if (before) $("msgs").insertBefore(d, before); else $("msgs").append(d);
+    return d;
+  }
+  function addEarlier() {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "linklike mono earlier"; b.textContent = "Earlier";
+    b.addEventListener("click", async () => {
+      const rows = await api.agentMessages(agent.id, oldest);
+      const anchor = b.nextSibling;
+      b.remove();
+      // Rows arrive newest first; insert oldest first so the order reads top to bottom.
+      rows.slice().reverse().forEach((m) => addMsg(m.role, m.content, false, anchor));
+      if (rows.length) oldest = rows[rows.length - 1].id;
+      if (rows.length === 40) $("msgs").prepend(b);
+    });
+    $("msgs").prepend(b);
+  }
+  const scrollDown = (smooth = true) => { const m = $("msgs"); m.style.scrollBehavior = smooth ? "smooth" : "auto"; m.scrollTop = m.scrollHeight; };
+
+  function setupComposer() {
+    const ta = $("input"), send = $("send");
+    let typingT;
+    const fit = () => { ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; send.disabled = busy || !ta.value.trim(); };
+    ta.addEventListener("input", () => {
+      fit();
+      if (!busy) { pet.mood = ta.value.trim() ? "listening" : (agent.mood || "calm"); clearTimeout(typingT); typingT = setTimeout(() => { if (!busy && pet.mood === "listening") pet.mood = agent.mood || "calm"; }, 4000); }
+    });
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!send.disabled) $("composer").requestSubmit(); } });
+    $("composer").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = ta.value.trim();
+      if (!text || busy) return;
+      busy = true; ta.value = ""; fit();
+      addMsg("user", text); scrollDown();
+      const typing = document.createElement("div"); typing.className = "typing"; typing.innerHTML = "<span></span><span></span><span></span>";
+      $("msgs").append(typing); scrollDown();
+      pet.mood = "thinking";
+      try {
+        const res = await api.talk(text);
+        typing.remove();
+        addMsg("agent", res.reply); scrollDown();
+        agent.mood = res.mood; agent.messages_count = res.messages_count; agent.last_talked_at = new Date().toISOString();
+        pet.mood = res.mood;
+        if (["happy", "excited", "playful"].includes(res.mood)) pet.ripple();
+        const fresh = await api.myAgent().catch(() => null);
+        if (fresh) agent.memories = fresh.memories;
+        renderStats();
+      } catch (err) {
+        typing.remove();
+        addMsg("error", err.message); scrollDown();
+        pet.mood = "sad";
+        setTimeout(() => { if (pet.mood === "sad") pet.mood = agent.mood || "calm"; }, 4000);
+      } finally {
+        busy = false; fit(); ta.focus();
+      }
+    });
+    fit();
+  }
+
+  // ======================================================== mind
+  $("open-mind").addEventListener("click", async () => {
+    const files = await api.agentFiles(agent.id).catch(() => []);
+    const order = ["soul.md", "owner.md", "memory.md"];
+    const byPath = Object.fromEntries(files.map((f) => [f.path, f]));
+    const tabs = document.querySelector(".mind-tabs");
+    tabs.textContent = "";
+    const pick = (p) => {
+      tabs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.p === p)));
+      const f = byPath[p];
+      $("mind-body").textContent = f ? f.content : "";
+      $("mind-title").textContent = `${agent.name} · ${p}${f ? " · v" + f.version : ""}`;
+    };
+    for (const p of order) {
+      const b = document.createElement("button");
+      b.type = "button"; b.setAttribute("role", "tab"); b.dataset.p = p; b.textContent = p;
+      b.addEventListener("click", () => pick(p));
+      tabs.append(b);
+    }
+    pick("soul.md");
+    $("mind").showModal();
+  });
+  $("close-mind").addEventListener("click", () => $("mind").close());
+  $("mind").addEventListener("click", (e) => { if (e.target === $("mind")) $("mind").close(); });
+
+  boot().catch(() => show("gate-guest"));
+})();
+</script>
+</body>
+</html>
