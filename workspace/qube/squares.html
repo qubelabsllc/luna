@@ -116,7 +116,7 @@
     <div>
       <span class="mono">Mine</span>
       <h3>Industrial Squares</h3>
-      <p>Each mine on an Industrial Square pays 1 point a day. Add up to 9 mines per Square at the Hexäğön.</p>
+      <p>Each mine on an Industrial Square pays 5 points a day. Add up to 9 mines per Square at the Hexäğön.</p>
       <a href="/hexagon#mines">Add mines →</a>
     </div>
   </section>
@@ -188,7 +188,7 @@
       a.innerHTML = '<div class="map"><canvas></canvas></div><div class="info"><span class="mono kind"></span><h2></h2><span class="s coords"></span><span class="s when"></span><span class="go">Open in Sfere →</span></div>';
       a.querySelector("h2").textContent = grid.label(q.row, q.col);
       a.querySelector(".kind").textContent = q.kind
-        ? QUBE.KINDS[q.kind].label + (q.kind === "industrial" ? ` · ${q.mines || 1} pt${(q.mines || 1) === 1 ? "" : "s"} a day` : q.kind === "social" ? ` · ${Math.max(0, Math.min(9, socialLeft))} of 9 posts` : " · agent home")
+        ? QUBE.KINDS[q.kind].label + (q.kind === "industrial" ? ` · ${(q.mines || 1) * QUBE.MINE_RATE} pts a day` : q.kind === "social" ? ` · ${Math.max(0, Math.min(9, socialLeft))} of 9 posts` : " · agent home")
         : "Needs a type";
       if (q.kind === "social") socialLeft -= 9;
       a.querySelector(".coords").textContent = `${grid.coords(q.row, q.col)} · 100 sq mi`;

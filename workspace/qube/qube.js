@@ -81,7 +81,7 @@
   }
   const KINDS = {
     residential: { label: "Residential", blurb: "Home for your agent. Your first one wakes it up." },
-    industrial: { label: "Industrial", blurb: "A points mine. Each mine earns 1 point a day, and it can hold up to 9." },
+    industrial: { label: "Industrial", blurb: "A points mine. Each mine earns 5 points a day, and it can hold up to 9." },
     social: { label: "Social", blurb: "Holds 9 of your posts on the Line. You need one to post." },
   };
 
@@ -250,6 +250,8 @@
 
   // --------------------------------------------------------------- Capital
   // Three civic Squares in a row that nobody can own (supabase/007_capital_market.sql).
+  // Every mine on an Industrial Square pays this many points a day (mine_rate() in SQL).
+  const MINE_RATE = 5;
   const CIVIC = [
     { key: "pentagon", row: 1449, col: 352, name: "Pentäğön", role: "Central government", href: "/pentagon",
       blurb: "The state of QÜBE: members, activity, $Points and land, live." },
@@ -423,5 +425,5 @@
   }
 
   const api = live ? supabaseApi() : offlineApi();
-  window.QUBE = { live, grid, KINDS, CIVIC, avatar, avatarSpec, hslToHex, mix, address, sha256, prepareMedia, nav, setNavUser, api, SPRING };
+  window.QUBE = { live, grid, KINDS, CIVIC, MINE_RATE, avatar, avatarSpec, hslToHex, mix, address, sha256, prepareMedia, nav, setNavUser, api, SPRING };
 })();

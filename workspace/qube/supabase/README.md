@@ -6,7 +6,7 @@ The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
-2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`007` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
+2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`008` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
 3. QÜBE is invite-only, so create the first invite and use it to sign up yourself. Pick your own code and keep it private (this repo is public):
 
    ```sql
@@ -87,7 +87,7 @@ Every Square gets a type when it's placed, and the type is permanent.
 | Type | What it does |
 |---|---|
 | Residential | Where the member's agent will live. Decorating comes later. |
-| Industrial | A points mine: 1 point per mine per full day, paid out when the member opens QÜBE (`collect_mines()`). Up to 9 mines, bought at the Hexäğön. |
+| Industrial | A points mine: 5 points per mine per full day, paid out when the member opens QÜBE (`collect_mines()`). Up to 9 mines, bought at the Hexäğön. |
 | Social | Holds 9 top-level posts. Members need Social Squares to post on the Line; replies don't use slots. Posts fill Social Squares in the order they were placed, and each one shows its posts in a 3 × 3 grid. |
 
 ## The Capital
@@ -105,13 +105,20 @@ The Pentäğön's visitor counts come from `log_visit()`: each browser keeps a r
 ## The Hexäğön market
 
 - **Land:** a new Square for **100 points** (`buy_square()`). The member then places it on any open land on the Sfere.
-- **Mines:** every Industrial Square starts with 1 mine, and each mine pays 1 point a day. A Square holds up to 9. The next mine costs 50 points × the mines the Square already has (50, 100, … 400), via `upgrade_mine()`, which pays out what the Square has earned first.
+- **Mines:** every Industrial Square starts with 1 mine, and each mine pays 5 points a day (`mine_rate()`). A Square holds up to 9. The next mine costs 50 points × the mines the Square already has (50, 100, … 400), via `upgrade_mine()`, which pays out what the Square has earned first.
 
-Points spent at the Hexäğön leave circulation.
+Points spent at the Hexäğön aren't destroyed: each purchase moves them from the member's wallet to the **central bank** (`bank_ledger`, filled by a trigger on every `spend` row). Total supply is every point ever minted: points in wallets plus the bank's reserve.
 
 ## $POINTS stats
 
-`points_stats()` is public: total supply, minted, spent, holders, 24-hour activity, mines, and 30 days of supply history. `my_points_series()` gives a member their own 30-day balance history.
+`points_stats()` is public:
+- `supply`: every point ever minted, which is `in_wallets` + `bank`.
+- `in_wallets`: what members hold now.
+- `bank`: the central bank's reserve.
+- `mined`: all-time mine payouts.
+- `daily_mine_output`, 24-hour activity, and 30 days of supply, wallet and bank history.
+
+`my_points_series()` gives a member their own 30-day balance history.
 
 ## Cirqle agents
 
@@ -128,6 +135,8 @@ The brain is a Supabase Edge Function that calls Claude. It needs an Anthropic A
 1. Get an API key at console.anthropic.com → **API Keys**.
 2. In Supabase, open **Edge Functions → Secrets** and add `ANTHROPIC_API_KEY` with that key.
 3. Open **Edge Functions → Deploy a new function → Via editor**. Name it exactly `agent-chat`, replace the sample code with `functions/agent-chat/index.ts`, and click **Deploy**.
+
+If a chat fails, the agent now says why: the key is missing or invalid, the Anthropic account is out of credits (add them in the Anthropic Console under **Billing**), or Claude is busy. The full error is in **Edge Functions → agent-chat → Logs**. After changing `index.ts`, deploy it again the same way.
 
 That's all: `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are provided to the function automatically.
 
