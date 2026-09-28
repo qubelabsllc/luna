@@ -765,7 +765,7 @@
       const label = q.kind ? QUBE.KINDS[q.kind].label : "Untyped";
       let sub = grid.coords(q.row, q.col);
       if (q.kind === "social") { const n = Math.max(0, Math.min(9, postsLeft)); postsLeft -= 9; sub = `${n} of 9 posts · ` + sub; }
-      if (q.kind === "industrial") sub = `Mining ${q.mines || 1} point${(q.mines || 1) === 1 ? "" : "s"} a day · ` + sub;
+      if (q.kind === "industrial") sub = `Mining ${(q.mines || 1) * QUBE.MINE_RATE} points a day · ` + sub;
       if (q.kind === "residential") sub = "Agent home · " + sub;
       if (!q.kind) sub = "Needs a type · " + sub;
       row(kindGlyph(q.kind), `${label} · ${grid.label(q.row, q.col)}`, sub, link(q.kind ? "View →" : "Choose →", "/sfere#" + grid.hash(q.row, q.col)));
@@ -801,15 +801,15 @@
     delta.querySelector("span").textContent = `${d > 0 ? "+" : ""}${fmt.format(d)} today${prev > 0 ? ` · ${d > 0 ? "+" : ""}${((d / prev) * 100).toFixed(1)}%` : ""}`;
     drawChart(series);
 
-    const supply = Number(stats.supply);
-    const share = supply > 0 ? (Number(wallet.balance) / supply) * 100 : 0;
+    const inWallets = Number(stats.in_wallets ?? stats.supply);
+    const share = inWallets > 0 ? (Number(wallet.balance) / inWallets) * 100 : 0;
     const tiles = [
-      ["Holders", fmt.format(Number(stats.holders)), "members holding $POINTS"],
+      ["In wallets", fmt.format(inWallets), "points members hold now"],
+      ["Central bank", fmt.format(Number(stats.bank ?? stats.spent)), "paid in at the Hexäğön"],
+      ["Mined", fmt.format(Number(stats.mined ?? 0)), `all time · +${fmt.format(Number(stats.daily_mine_output))} a day`],
       ["Minted · 24h", "+" + fmt.format(Number(stats.minted_24h)), "spins, likes, mines, referrals"],
-      ["Mines", fmt.format(Number(stats.mines)), `+${fmt.format(Number(stats.daily_mine_output))} points a day`],
-      ["Spent on land", fmt.format(Number(stats.spent)), "points taken out of supply"],
       ["Land price", fmt.format(Number(stats.land_price)), "points per Square"],
-      ["Your share", share >= 0.1 || share === 0 ? share.toFixed(1) + "%" : "<0.1%", "of all $POINTS"],
+      ["Your share", share >= 0.1 || share === 0 ? share.toFixed(1) + "%" : "<0.1%", "of points in wallets"],
     ];
     const g = $("m-grid");
     g.textContent = "";

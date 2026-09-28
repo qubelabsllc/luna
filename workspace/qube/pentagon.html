@@ -169,7 +169,7 @@
   // ---------------------------------------------------------------- charts
   // One series per chart, in the accent. Bars for daily counts, an area for a running total.
   const CHARTS = [
-    { key: "supply", title: "$Points supply", sub: "Points in circulation at the end of each day", type: "area" },
+    { key: "supply", title: "$Points supply", sub: "Every point minted, at the end of each day", type: "area" },
     { key: "members", title: "New members", sub: "Sign-ups per day", type: "bar" },
     { key: "visitors", title: "Visitors", sub: "Unique visitors per day", type: "bar" },
     { key: "posts", title: "Posts on the Līnē", sub: "Posts and replies per day", type: "bar" },
@@ -276,10 +276,10 @@
       ["Likes", n("likes"), `<em>+${fmt.format(n("likes_24h"))}</em> in the last 24 hours`],
     ]);
     kpis($("k-points"), [
-      ["Supply", q("supply"), "points in circulation"],
-      ["Minted", q("minted"), `<em>+${fmt.format(q("minted_24h"))}</em> in the last 24 hours`],
-      ["Spent", q("spent"), "on land and mines, out of circulation"],
-      ["Mined per day", q("daily_mine_output"), `from ${fmt.format(n("industrial"))} Industrial Square${n("industrial") === 1 ? "" : "s"}`],
+      ["Total supply", q("supply"), `every point ever minted · <em>+${fmt.format(q("minted_24h"))}</em> today`],
+      ["In wallets", q("in_wallets"), `${pct(q("in_wallets"), q("supply"))} of supply, held by members`],
+      ["Central bank", q("bank"), "paid in for land and mines at the Hexäğön"],
+      ["Mined", q("mined"), `all time · <em>+${fmt.format(q("daily_mine_output"))}</em> a day from ${plural(n("mines"), "mine", "mines")}`],
     ]);
     kpis($("k-land"), [
       ["Squares claimed", n("squares"), `${pct(n("squares"), n("land_total"))} of ${fmt.format(n("land_total"))} land Squares`],

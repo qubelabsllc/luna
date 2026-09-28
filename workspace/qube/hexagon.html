@@ -114,7 +114,7 @@
       <div class="mono">The Capital · Central bank</div>
       <h1>Hexäğön</h1>
     </div>
-    <p>The market. Spend points on land and mines. Points spent here leave circulation for good.</p>
+    <p>The market and the central bank. Points spent here on land and mines go to the bank's reserve.</p>
   </header>
   <div class="where mono">
     <a id="where" href="/sfere">SQ 3·354·303 · See it on the Sfere →</a>
@@ -146,7 +146,7 @@
     <section class="stall" id="mines" aria-labelledby="h-mines">
       <span class="mono">Mines</span>
       <h2 id="h-mines">Upgrade your Industrial Squares</h2>
-      <p>Every Industrial Square starts with 1 mine. Each mine pays 1 point a day, and a Square holds up to 9. The next mine costs 50 points for every mine the Square already has.</p>
+      <p>Every Industrial Square starts with 1 mine. Each mine pays 5 points a day, and a Square holds up to 9. The next mine costs 50 points for every mine the Square already has.</p>
       <ul class="mines" id="mine-list"></ul>
       <p class="msg" id="mine-msg" aria-live="polite"></p>
     </section>
@@ -157,7 +157,7 @@
     <div class="ledger">
       <div><span class="mono">Land price</span><b id="m-price">—</b></div>
       <div><span class="mono">Squares claimed</span><b id="m-squares">—</b></div>
-      <div><span class="mono">Points spent</span><b id="m-spent">—</b></div>
+      <div><span class="mono">Central bank</span><b id="m-spent">—</b></div>
       <div><span class="mono">Mined per day</span><b id="m-mined">—</b></div>
     </div>
   </section>
@@ -234,7 +234,7 @@
       const pips = Array.from({ length: MAX }, (_, i) => `<i class="${i < m.mines ? "on" : ""}${fresh === m.row + "." + m.col && i === m.mines - 1 ? " new" : ""}"></i>`).join("");
       li.innerHTML = `<div>
           <h3><a href="/sfere#${grid.hash(m.row, m.col)}">${grid.label(m.row, m.col)}</a></h3>
-          <div class="s">${m.mines} mine${m.mines === 1 ? "" : "s"} · ${m.per_day} point${m.per_day === 1 ? "" : "s"} a day · ${grid.coords(m.row, m.col)}</div>
+          <div class="s">${m.mines} mine${m.mines === 1 ? "" : "s"} · ${m.per_day} points a day · ${grid.coords(m.row, m.col)}</div>
           <div class="pips" role="img" aria-label="${m.mines} of ${MAX} mines">${pips}</div>
         </div>`;
       const btn = document.createElement("button");
@@ -248,7 +248,7 @@
             await api.upgradeMine(m.row, m.col);
             fresh = m.row + "." + m.col;
             await refresh();
-            $("mine-msg").textContent = `Mine ${m.mines + 1} is running. That Square now pays ${m.mines + 1} points a day.`;
+            $("mine-msg").textContent = `Mine ${m.mines + 1} is running. That Square now pays ${(m.mines + 1) * QUBE.MINE_RATE} points a day.`;
           } catch (err) {
             $("mine-msg").className = "msg err"; $("mine-msg").textContent = err.message;
             renderMines();
@@ -268,7 +268,7 @@
     $("land-price").innerHTML = `${fmt.format(landPrice)}<small>PTS</small>`;
     $("m-price").textContent = fmt.format(landPrice) + " pts";
     $("m-squares").textContent = fmt.format(Number(p.squares_claimed));
-    $("m-spent").textContent = fmt.format(Number(p.spent));
+    $("m-spent").textContent = fmt.format(Number(p.bank ?? p.spent));
     $("m-mined").textContent = fmt.format(Number(p.daily_mine_output));
   }
 

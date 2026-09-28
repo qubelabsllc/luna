@@ -819,7 +819,7 @@
         return;
       }
       const mines = owner.mines || 1;
-      const extra = owner.kind === "industrial" ? ` · ${mines} mine${mines === 1 ? "" : "s"}, ${mines} point${mines === 1 ? "" : "s"} a day` : owner.kind === "residential" ? (owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet") : "";
+      const extra = owner.kind === "industrial" ? ` · ${mines} mine${mines === 1 ? "" : "s"}, ${mines * QUBE.MINE_RATE} points a day` : owner.kind === "residential" ? (owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet") : "";
       const btns = [close];
       if (isMine && owner.kind === "industrial" && mines < 9) btns.unshift(button("Add a mine", null, false, `/hexagon#mine-${row}.${col}`));
       if (isMine && owner.kind === "residential") btns.unshift(button(owner.agent_name ? `Visit ${owner.agent_name}` : "Wake your agent", null, false, "/cirqle"));
@@ -854,7 +854,7 @@
     try {
       await api.claimSquare(row, col, kind);
       await loadData();
-      toast(kind === "social" ? "Social Square placed. You have 9 more posts." : kind === "industrial" ? "Mine placed. It pays 1 point a day." : "Home placed.");
+      toast(kind === "social" ? "Social Square placed. You have 9 more posts." : kind === "industrial" ? `Mine placed. It pays ${QUBE.MINE_RATE} points a day.` : "Home placed.");
       select(row, col);
     } catch (err) {
       $("card-err").textContent = err.message;

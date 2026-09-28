@@ -85,17 +85,43 @@ function textOf(message: { content: Array<{ type: string; text?: string }> }) {
 }
 
 async function ask(system: Anthropic.Beta.BetaTextBlockParam[], messages: Anthropic.Beta.BetaMessageParam[], schema: Record<string, unknown>, maxTokens: number) {
-  const res = await anthropic.beta.messages.create({
+  const base = {
     model: MODEL,
     max_tokens: maxTokens,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default", // a declined request is re-run on Anthropic's recommended fallback model
-    output_config: { effort: "low", format: { type: "json_schema", schema } },
+    output_config: { effort: "low" as const, format: { type: "json_schema" as const, schema } },
     system,
     messages,
-  });
+  };
+  let res;
+  try {
+    res = await anthropic.beta.messages.create({
+      ...base,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default", // a declined request is re-run on Anthropic's recommended fallback model
+    });
+  } catch (err) {
+    // Some accounts can't use the fallback beta yet: try once more without it.
+    if (!(err instanceof Anthropic.BadRequestError) || outOfCredits(err)) throw err;
+    console.error("agent-chat: retrying without fallbacks:", err.status, err.message);
+    res = await anthropic.beta.messages.create(base);
+  }
   if (res.stop_reason === "refusal") return null;
   try { return JSON.parse(textOf(res)); } catch { return null; }
+}
+
+const outOfCredits = (err: unknown) => err instanceof Anthropic.APIError && /credit balance/i.test(err.message);
+
+// What went wrong, in words the member (and the site's owner) can act on.
+function explain(err: unknown, name: string): { status: number; error: string } {
+  if (err instanceof Anthropic.AuthenticationError) return { status: 503, error: "The agent's brain isn't connected yet: the ANTHROPIC_API_KEY secret is missing or invalid." };
+  if (err instanceof Anthropic.PermissionDeniedError) return { status: 503, error: "The Anthropic API key doesn't have access to Claude Opus 5." };
+  if (err instanceof Anthropic.NotFoundError) return { status: 503, error: "The Anthropic API key can't use Claude Opus 5." };
+  if (outOfCredits(err)) return { status: 503, error: "The agent's brain is out of credits. Add credits in the Anthropic Console under Billing." };
+  if (err instanceof Anthropic.RateLimitError) return { status: 429, error: `${name} is getting a lot of messages. Try again in a minute.` };
+  if (err instanceof Anthropic.APIConnectionError || (err instanceof Anthropic.APIError && (err.status ?? 0) >= 500)) {
+    return { status: 502, error: `${name} couldn't think just now: Claude is busy. Try again in a moment.` };
+  }
+  return { status: 502, error: `${name} couldn't think just now. Try again in a moment.` };
 }
 
 async function loadFiles(agentId: string): Promise<Files> {
@@ -193,9 +219,10 @@ Deno.serve(async (req) => {
       2000,
     );
   } catch (err) {
-    const status = err instanceof Anthropic.RateLimitError ? 429 : err instanceof Anthropic.AuthenticationError ? 503 : 502;
-    const text = status === 503 ? "The agent's brain isn't connected yet (missing or invalid ANTHROPIC_API_KEY)." : `${agent.name} couldn't think just now. Try again in a moment.`;
-    return json({ error: text }, status);
+    // The full error goes to the function's logs (Supabase → Edge Functions → agent-chat → Logs).
+    console.error("agent-chat:", err instanceof Anthropic.APIError ? `${err.status} ${err.message}` : err);
+    const { status, error } = explain(err, agent.name);
+    return json({ error }, status);
   }
   if (!out || !out.reply) out = { reply: "…i'd rather not talk about that one. tell me something else?", mood: "shy", remember: [] };
   const mood = MOODS.includes(out.mood) ? out.mood : "calm";
