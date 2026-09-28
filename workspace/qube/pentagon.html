@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pentäğön · QÜBE</title>
+<meta name="description" content="The Pentäğön: QÜBE's central government. Members, activity, $Points and land across the ecosystem, live.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/qube.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --ink: #111216;
+    --muted: #6b6f78;
+    --faint: #f5f6f8;
+    --line: #e4e6ea;
+    --accent: #3a3df5;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 5vw, 64px);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 8px var(--gutter) 96px; display: flex; flex-direction: column; gap: 56px; }
+  .head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 20px 28px; padding-block: 16px 20px; border-bottom: 1px solid var(--ink); }
+  .head .shape { width: 64px; height: 64px; color: var(--ink); align-self: center; }
+  .head h1 { margin: 8px 0 0; font: 200 clamp(36px, 6vw, 52px)/1 var(--display); }
+  .head p { margin: 0; max-width: 34ch; color: var(--muted); font-size: 15px; }
+  .where { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: -40px; }
+  .where a { text-decoration: none; }
+  .where a:hover { color: var(--accent); }
+  .live::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: 1px; animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+
+  section > header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+  section > header h2 { margin: 0; font: 300 22px/1.2 var(--display); }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .kpi { padding: 20px 20px 4px 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .kpi + .kpi { padding-left: 20px; border-left: 1px solid var(--line); }
+  .kpi b { font: 200 clamp(28px, 4vw, 40px)/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .s { font-size: 14px; color: var(--muted); }
+  .kpi .s em { font-style: normal; color: var(--ink); }
+
+  .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 48px; margin-top: 8px; }
+  .chart-box h3 { margin: 0; font: 400 15px/1.3 var(--body); }
+  .chart-box .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .chart { position: relative; height: 180px; margin-top: 14px; }
+  .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .chart .tip { position: absolute; top: -6px; transform: translate(-50%, -100%); pointer-events: none; background: var(--ink); color: #fff; border-radius: 6px; padding: 6px 9px; font: 400 12px/1.3 var(--mono); white-space: nowrap; opacity: 0; transition: opacity 0.12s; }
+  .chart .tip span { color: #b8bbc2; }
+  details.table { margin-top: 32px; }
+  details.table summary { cursor: pointer; }
+  .tbl { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font: 400 13px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; }
+  th { font-weight: 400; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+
+  .owners { list-style: none; margin: 8px 0 0; padding: 0; }
+  .owners li { display: grid; grid-template-columns: 28px 14px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .owners .n { font: 400 12px/1 var(--mono); color: var(--muted); }
+  .owners .sw { width: 14px; height: 14px; }
+  .owners b { font-weight: 500; }
+  .owners span:last-child { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .empty { color: var(--muted); padding: 16px 0; }
+  .note { color: var(--muted); font-size: 14px; max-width: 64ch; margin: 0; }
+
+  @media (max-width: 820px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi:nth-child(3) { padding-left: 0; border-left: 0; }
+    .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); margin-top: 16px; }
+    .charts { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .head { grid-template-columns: auto minmax(0, 1fr); }
+    .head p { grid-column: 1 / -1; }
+    .head .shape { width: 48px; height: 48px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .live::before { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <svg class="shape" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.8 20 9.6 16.9 19H7.1L4 9.6Z"/></svg>
+    <div>
+      <div class="mono">The Capital · Central government</div>
+      <h1>Pentäğön</h1>
+    </div>
+    <p>The state of QÜBE, live. Every number here is public and comes straight from the ledger and the Sfere.</p>
+  </header>
+  <div class="where mono">
+    <a id="where" href="/sfere">SQ 3·352·303 · See it on the Sfere →</a>
+    <span class="live" id="updated">Loading…</span>
+  </div>
+
+  <p class="note" id="offline" hidden>The Pentäğön isn't connected to QÜBE's database yet.</p>
+
+  <section aria-labelledby="h-members">
+    <header><h2 id="h-members">Members</h2><span class="mono">Invite only</span></header>
+    <div class="kpis" id="k-members"></div>
+  </section>
+
+  <section aria-labelledby="h-site">
+    <header><h2 id="h-site">Activity</h2><span class="mono">Site &amp; Līnē</span></header>
+    <div class="kpis" id="k-site"></div>
+  </section>
+
+  <section aria-labelledby="h-points">
+    <header><h2 id="h-points">$Points</h2><span class="mono">Off-chain ledger</span></header>
+    <div class="kpis" id="k-points"></div>
+  </section>
+
+  <section aria-labelledby="h-land">
+    <header><h2 id="h-land">Land &amp; agents</h2><span class="mono">The Sfere</span></header>
+    <div class="kpis" id="k-land"></div>
+  </section>
+
+  <section aria-labelledby="h-trends">
+    <header><h2 id="h-trends">Last 30 days</h2><span class="mono">UTC days</span></header>
+    <div class="charts" id="charts"></div>
+    <details class="table">
+      <summary class="mono">Show the numbers as a table</summary>
+      <div class="tbl" id="tbl"></div>
+    </details>
+  </section>
+
+  <section aria-labelledby="h-owners">
+    <header><h2 id="h-owners">Largest landowners</h2><span class="mono">By Squares</span></header>
+    <ol class="owners" id="owners"></ol>
+  </section>
+</main>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="/qube.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { api, grid, CIVIC } = window.QUBE;
+  QUBE.nav("pentagon");
+  const fmt = new Intl.NumberFormat("en-US");
+  const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+  const big = (n) => (Math.abs(n) >= 100000 ? compact.format(n) : fmt.format(n));
+  const pct = (a, b) => { const v = b ? (a / b) * 100 : 0; return (v > 0 && v < 0.1 ? "<0.1" : Math.round(v * 10) / 10) + "%"; };
+  const plural = (n, one, many) => `${fmt.format(n)} ${n === 1 ? one : many}`;
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const home = CIVIC.find((c) => c.key === "pentagon");
+  $("where").href = "/sfere#" + grid.hash(home.row, home.col);
+  $("where").textContent = `${grid.label(home.row, home.col)} · See it on the Sfere →`;
+
+  function kpis(el, items) {
+    el.innerHTML = items.map(([k, v, s]) => `<div class="kpi"><span class="mono">${k}</span><b title="${esc(fmt.format(v))}">${big(v)}</b><span class="s">${s}</span></div>`).join("");
+  }
+
+  // ---------------------------------------------------------------- charts
+  // One series per chart, in the accent. Bars for daily counts, an area for a running total.
+  const CHARTS = [
+    { key: "supply", title: "$Points supply", sub: "Points in circulation at the end of each day", type: "area" },
+    { key: "members", title: "New members", sub: "Sign-ups per day", type: "bar" },
+    { key: "visitors", title: "Visitors", sub: "Unique visitors per day", type: "bar" },
+    { key: "posts", title: "Posts on the Līnē", sub: "Posts and replies per day", type: "bar" },
+    { key: "squares", title: "Squares placed", sub: "New Squares on the Sfere per day", type: "bar" },
+  ];
+  let series = null;
+  const short = (iso) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const niceTop = (x) => {
+    if (x <= 4) return 4;
+    const p = Math.pow(10, Math.floor(Math.log10(x))), m = x / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+  };
+
+  function drawChart(box, rows, type, label) {
+    const svg = box.querySelector("svg"), tip = box.querySelector(".tip");
+    const W = box.clientWidth, H = box.clientHeight;
+    if (!W || !rows.length) return;
+    const padR = 44, padB = 22, padT = 8, n = rows.length;
+    const top = niceTop(Math.max(...rows.map((d) => d.v)) * 1.05);
+    const plotW = W - padR, plotH = H - padT - padB;
+    const Y = (v) => padT + (1 - v / top) * plotH;
+    const ticks = [top, top / 2, 0];
+    let marks = "", pts = [];
+    if (type === "bar") {
+      const step = plotW / n, bw = Math.max(2, step - 2);   // 2px gap between bars
+      rows.forEach((d, i) => {
+        const x = i * step + (step - bw) / 2, y = Y(d.v), h = Y(0) - y;
+        pts.push([x + bw / 2, y]);
+        if (h <= 0) return;
+        const r = Math.min(4, bw / 2, h);   // rounded data end, square at the baseline
+        marks += `<path d="M${x} ${Y(0)}V${y + r}Q${x} ${y} ${x + r} ${y}H${x + bw - r}Q${x + bw} ${y} ${x + bw} ${y + r}V${Y(0)}Z" fill="var(--accent)"/>`;
+      });
+    } else {
+      const X = (i) => (i / Math.max(1, n - 1)) * plotW;
+      pts = rows.map((d, i) => [X(i), Y(d.v)]);
+      const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("");
+      marks = `<path d="${line}L${plotW} ${Y(0)}L0 ${Y(0)}Z" fill="url(#wash-${label})"/>
+        <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${pts[n - 1][0]}" cy="${pts[n - 1][1]}" r="4.5" fill="var(--accent)" stroke="#fff" stroke-width="2"/>`;
+    }
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.innerHTML = `
+      <defs><linearGradient id="wash-${label}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".16"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+      ${ticks.map((t) => `<line x1="0" x2="${plotW}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)"/><text x="${plotW + 8}" y="${Y(t) + 4}" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">${big(t)}</text>`).join("")}
+      ${marks}
+      <text x="0" y="${H - 4}" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">${short(rows[0].day)}</text>
+      <text x="${plotW}" y="${H - 4}" text-anchor="end" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">Today</text>
+      <line class="xh" x1="0" x2="0" y1="${padT}" y2="${Y(0)}" stroke="var(--ink)" stroke-opacity=".25" visibility="hidden"/>
+      <circle class="hd" r="4.5" fill="var(--accent)" stroke="#fff" stroke-width="2" visibility="hidden"/>
+      <rect class="hit" x="0" y="0" width="${plotW}" height="${H}" fill="transparent"/>`;
+    const xh = svg.querySelector(".xh"), hd = svg.querySelector(".hd");
+    const move = (e) => {
+      const r = svg.getBoundingClientRect();
+      const f = (e.clientX - r.left) / plotW;
+      const i = Math.max(0, Math.min(n - 1, type === "bar" ? Math.floor(f * n) : Math.round(f * (n - 1))));
+      const [x, y] = pts[i];
+      xh.setAttribute("x1", x); xh.setAttribute("x2", x); xh.setAttribute("visibility", "visible");
+      hd.setAttribute("cx", x); hd.setAttribute("cy", y); hd.setAttribute("visibility", type === "area" ? "visible" : "hidden");
+      tip.innerHTML = `<span>${short(rows[i].day)}</span> ${fmt.format(rows[i].v)}`;
+      tip.style.left = Math.max(48, Math.min(W - 60, x)) + "px";
+      tip.style.top = Math.max(0, y - 6) + "px";
+      tip.style.opacity = 1;
+    };
+    const hit = svg.querySelector(".hit");
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { xh.setAttribute("visibility", "hidden"); hd.setAttribute("visibility", "hidden"); tip.style.opacity = 0; });
+  }
+
+  $("charts").innerHTML = CHARTS.map((c) => `
+    <div class="chart-box"><h3>${c.title}</h3><div class="sub">${c.sub}</div>
+      <div class="chart" data-key="${c.key}"><svg role="img" aria-label="${c.title}, last 30 days"></svg><div class="tip"></div></div></div>`).join("");
+  const drawAll = () => {
+    if (!series) return;
+    for (const c of CHARTS) drawChart($("charts").querySelector(`[data-key="${c.key}"]`), series.map((d) => ({ day: d.day, v: Number(d[c.key]) || 0 })), c.type, c.key);
+  };
+  new ResizeObserver(drawAll).observe($("charts"));
+
+  function table(rows) {
+    $("tbl").innerHTML = `<table><thead><tr><th>Day</th>${CHARTS.map((c) => `<th>${c.title}</th>`).join("")}</tr></thead><tbody>${
+      rows.slice().reverse().map((d) => `<tr><td>${short(d.day)}</td>${CHARTS.map((c) => `<td>${fmt.format(Number(d[c.key]) || 0)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  }
+
+  // ------------------------------------------------------------------ data
+  async function load() {
+    const [e, p] = await Promise.all([api.ecosystemStats().catch(() => null), api.pointsStats().catch(() => null)]);
+    if (!e || !p) {
+      $("offline").hidden = !!(e || p);
+      if (!e && !p) { $("updated").textContent = "Offline"; return; }
+    }
+    const E = e || {}, P = p || {};
+    const n = (k) => Number(E[k]) || 0, q = (k) => Number(P[k]) || 0;
+
+    kpis($("k-members"), [
+      ["Members", n("members"), `<em>+${fmt.format(n("members_24h"))}</em> in the last 24 hours`],
+      ["New this week", n("members_7d"), "joined in the last 7 days"],
+      ["Onboarded", n("members_complete"), `${pct(n("members_complete"), n("members"))} finished their profile`],
+      ["Invites used", n("invites_used"), `${fmt.format(n("invites_open"))} codes still open`],
+    ]);
+    kpis($("k-site"), [
+      ["Visitors today", n("visitors_24h"), `${fmt.format(n("visits_24h"))} page views`],
+      ["Visitors this week", n("visitors_7d"), "unique, last 7 days"],
+      ["Posts", n("posts"), `${plural(n("replies"), "reply", "replies")} · <em>+${fmt.format(n("posts_24h"))}</em> today`],
+      ["Likes", n("likes"), `<em>+${fmt.format(n("likes_24h"))}</em> in the last 24 hours`],
+    ]);
+    kpis($("k-points"), [
+      ["Supply", q("supply"), "points in circulation"],
+      ["Minted", q("minted"), `<em>+${fmt.format(q("minted_24h"))}</em> in the last 24 hours`],
+      ["Spent", q("spent"), "on land and mines, out of circulation"],
+      ["Mined per day", q("daily_mine_output"), `from ${fmt.format(n("industrial"))} Industrial Square${n("industrial") === 1 ? "" : "s"}`],
+    ]);
+    kpis($("k-land"), [
+      ["Squares claimed", n("squares"), `${pct(n("squares"), n("land_total"))} of ${fmt.format(n("land_total"))} land Squares`],
+      ["Mines", n("mines"), `${fmt.format(n("residential"))} residential · ${fmt.format(n("industrial"))} industrial · ${fmt.format(n("social"))} social Squares`],
+      ["Agents", n("agents"), `${plural(n("agent_messages"), "message", "messages")} · <em>+${fmt.format(n("agent_messages_24h"))}</em> today`],
+      ["Landowners", n("landowners"), `${plural(n("squares_bought"), "Square", "Squares")} bought at the Hexäğön`],
+    ]);
+
+    // Merge the two 30-day series by day.
+    const byDay = new Map((E.series || []).map((d) => [d.day, { ...d }]));
+    for (const d of P.series || []) byDay.set(d.day, { ...(byDay.get(d.day) || { day: d.day }), supply: d.supply });
+    series = [...byDay.values()].sort((a, b) => (a.day < b.day ? -1 : 1));
+    drawAll();
+    table(series);
+
+    const owners = E.top_landowners || [];
+    $("owners").innerHTML = owners.length
+      ? owners.map((o, i) => `<li><span class="n">${String(i + 1).padStart(2, "0")}</span><span class="sw" style="background:${esc(o.color || "#9aa0aa")}"></span><b>@${esc(o.handle)}</b><span>${fmt.format(o.squares)} Square${o.squares === 1 ? "" : "s"}</span></li>`).join("")
+      : '<li class="empty">No Squares placed yet.</li>';
+    $("updated").textContent = "Live · updated " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  }
+  load();
+  setInterval(() => { if (!document.hidden) load(); }, 60000);
+})();
+</script>
+</body>
+</html>

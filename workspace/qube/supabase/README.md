@@ -6,7 +6,7 @@ The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
-2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`006` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
+2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`007` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
 3. QÜBE is invite-only, so create the first invite and use it to sign up yourself. Pick your own code and keep it private (this repo is public):
 
    ```sql
@@ -87,12 +87,27 @@ Every Square gets a type when it's placed, and the type is permanent.
 | Type | What it does |
 |---|---|
 | Residential | Where the member's agent will live. Decorating comes later. |
-| Industrial | A points mine: 1 point per full day, paid out when the member opens QÜBE (`collect_mines()`). |
+| Industrial | A points mine: 1 point per mine per full day, paid out when the member opens QÜBE (`collect_mines()`). Up to 9 mines, bought at the Hexäğön. |
 | Social | Holds 9 top-level posts. Members need Social Squares to post on the Line; replies don't use slots. Posts fill Social Squares in the order they were placed, and each one shows its posts in a 3 × 3 grid. |
 
-## The Sfere market
+## The Capital
 
-For now the market sells one thing: a new Square for **100 points** (`buy_square()`). The points leave circulation and the member gets a Square to place.
+Three civic Squares in a row on the Sfere, in Svalbard, belong to QÜBE itself and can't be claimed (`sfere_civic`, enforced by the same trigger that keeps Squares on land):
+
+| Square | Name | What it is |
+|---|---|---|
+| SQ 3·352·303 | Pentäğön (`/pentagon`) | Central government: live ecosystem numbers from `ecosystem_stats()` and `points_stats()`. |
+| SQ 3·353·303 | QÜBE Capital | The heart of the Sfere. |
+| SQ 3·354·303 | Hexäğön (`/hexagon`) | Central bank: the market. |
+
+The Pentäğön's visitor counts come from `log_visit()`: each browser keeps a random id, and the site stores one row per id, page and day. Nothing else about the visitor is stored.
+
+## The Hexäğön market
+
+- **Land:** a new Square for **100 points** (`buy_square()`). The member then places it on any open land on the Sfere.
+- **Mines:** every Industrial Square starts with 1 mine, and each mine pays 1 point a day. A Square holds up to 9. The next mine costs 50 points × the mines the Square already has (50, 100, … 400), via `upgrade_mine()`, which pays out what the Square has earned first.
+
+Points spent at the Hexäğön leave circulation.
 
 ## $POINTS stats
 
