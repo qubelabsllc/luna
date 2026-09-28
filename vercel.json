@@ -53,6 +53,10 @@
       "destination": "/workspace/qube/qube.css"
     },
     {
+      "source": "/motion.js",
+      "destination": "/workspace/qube/motion.js"
+    },
+    {
       "source": "/data/:file",
       "destination": "/workspace/qube/data/:file"
     },

@@ -111,6 +111,24 @@
   }
   .stage canvas.dragging { cursor: grabbing; }
 
+  /* Film */
+  .film { padding-block: 8px 72px; }
+  .film header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+  }
+  .film-ctl { display: flex; align-items: baseline; gap: 18px; }
+  .film-ctl button {
+    font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink);
+    background: none; border: 0; padding: 0; cursor: pointer;
+  }
+  .film-ctl button:hover { color: var(--accent); }
+  .film-ctl span { font-variant-numeric: tabular-nums; }
+  .film canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; cursor: pointer; border-bottom: 1px solid var(--line); }
+
   /* Work */
   .work { padding-block: 32px 120px; }
   .work header {
@@ -182,6 +200,14 @@
     <div class="stage">
       <canvas id="cube" tabindex="0" aria-label="A 3 by 3 by 3 cube that turns its layers and opens to reveal its core. Drag to rotate, click to open."></canvas>
     </div>
+  </section>
+
+  <section class="film" aria-labelledby="film-title">
+    <header class="mono">
+      <span id="film-title">The film</span>
+      <span class="film-ctl"><span id="film-time">00:00 / 00:19</span><button type="button" id="film-btn">Play</button></span>
+    </header>
+    <canvas id="film" width="1920" height="1080" role="img" aria-label="QÜBE in 19 seconds: a point becomes a line, a square, a cube, the Sfere and an agent; the eight shapes line up and gather into the QÜBE wordmark."></canvas>
   </section>
 
   <section class="work" id="shapes">
@@ -494,6 +520,38 @@
   } else {
     requestAnimationFrame(frame);
   }
+})();
+</script>
+<script src="/motion.js"></script>
+<script>
+(() => {
+  // The film plays while it's on screen. Reduced motion: it waits on its last frame.
+  const canvas = document.getElementById("film"), btn = document.getElementById("film-btn"), time = document.getElementById("film-time");
+  if (!window.QubeMotion || !canvas.getContext) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mmss = (t) => `00:${String(Math.floor(t)).padStart(2, "0")}`;
+  let film, visible = false, userPaused = reduce, clock;
+  const sync = (on) => {
+    btn.textContent = on ? "Pause" : "Play";
+    clearInterval(clock);
+    const show = () => { time.textContent = `${mmss(film.time)} / ${mmss(film.duration)}`; };
+    show();
+    if (on) clock = setInterval(show, 250);
+  };
+  const fonts = ["200 40px Unbounded", "300 40px Unbounded", "400 16px 'JetBrains Mono'"].map((f) => document.fonts.load(f, "QÜBE Līnē Cirqlė Pentäğön"));
+  Promise.all(fonts).catch(() => {}).then(() => {
+    film = QubeMotion.mount(canvas, { onState: sync });
+    if (reduce) film.seek(film.duration - 0.5);
+    sync(false);
+    const toggle = () => { if (film.playing) { userPaused = true; film.pause(); } else { userPaused = false; film.play(); } };
+    btn.addEventListener("click", toggle);
+    canvas.addEventListener("click", toggle);
+    new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+      if (visible && !userPaused) film.play();
+      if (!visible && film.playing) film.pause();
+    }, { threshold: 0.5 }).observe(canvas);
+  });
 })();
 </script>
 <script src="/config.js"></script>
