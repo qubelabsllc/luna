@@ -210,8 +210,14 @@
         const { data, error } = await sb.functions.invoke("agent-chat", { body: { message } });
         if (error) {
           let msg = "Your agent couldn't answer. Try again in a moment.";
-          try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch {}
-          if (error.name === "FunctionsFetchError" || error.name === "FunctionsRelayError") msg = "Your agent's brain isn't switched on yet.";
+          // The function says what went wrong; its detail is the API's own words, useful when setting up.
+          try {
+            const j = await error.context.json();
+            if (j && j.error) msg = j.error + (j.detail ? ` (${j.detail})` : "");
+            // Supabase's own answer, e.g. when the function isn't deployed under that name.
+            else if (j && (j.message || j.msg)) msg = `Your agent's brain didn't answer (${error.context.status} ${j.message || j.msg}). Is the agent-chat function deployed?`;
+          } catch {}
+          if (error.name === "FunctionsFetchError" || error.name === "FunctionsRelayError") msg = "Couldn't reach your agent's brain. Is the agent-chat function deployed?";
           throw new Error(msg);
         }
         return data;
@@ -253,11 +259,11 @@
   // Every mine on an Industrial Square pays this many points a day (mine_rate() in SQL).
   const MINE_RATE = 5;
   const CIVIC = [
-    { key: "pentagon", row: 1449, col: 352, name: "Pentäğön", role: "Central government", href: "/pentagon",
+    { key: "penta", row: 1449, col: 352, name: "Penta", role: "Central government", href: "/penta",
       blurb: "The state of QÜBE: members, activity, $Points and land, live." },
     { key: "capital", row: 1449, col: 353, name: "QÜBE Capital", role: "The Capital", href: null,
-      blurb: "The heart of the Sfere. The Pentäğön keeps the numbers; the Hexäğön keeps the market." },
-    { key: "hexagon", row: 1449, col: 354, name: "Hexäğön", role: "Central bank · Market", href: "/hexagon",
+      blurb: "The heart of the Sfere. The Penta keeps the numbers; the Hexa keeps the market." },
+    { key: "hexa", row: 1449, col: 354, name: "Hexa", role: "Central bank · Market", href: "/hexa",
       blurb: "The market: buy land and add mines to your Industrial Squares." },
   ];
 
@@ -274,9 +280,9 @@
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/><path pathLength="1" d="M4 12c0 2.2 3.6 3.9 8 3.9s8-1.7 8-3.9"/>' },
     { key: "cirqle", label: "Cirqlė", note: "Your agent", href: "/cirqle",
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/>' },
-    { key: "pentagon", label: "Pentäğön", note: "Ecosystem metrics", href: "/pentagon", group: "The Capital",
+    { key: "penta", label: "Penta", note: "Ecosystem metrics", href: "/penta", group: "The Capital",
       icon: '<path pathLength="1" d="M12 3.8 20 9.6 16.9 19H7.1L4 9.6Z"/>' },
-    { key: "hexagon", label: "Hexäğön", note: "The market", href: "/hexagon", group: "The Capital",
+    { key: "hexa", label: "Hexa", note: "The market", href: "/hexa", group: "The Capital",
       icon: '<path pathLength="1" d="M12 3.5 19.4 7.75v8.5L12 20.5l-7.4-4.25v-8.5Z"/>' },
   ];
   const svgIcon = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${inner}</svg>`;
@@ -387,7 +393,7 @@
     });
     document.addEventListener("pointerdown", (e) => { if (open && !header.querySelector(".qn-menu").contains(e.target)) setOpen(false); });
 
-    // Anonymous page counts for the Pentäğön: a random id this browser keeps, nothing else.
+    // Anonymous page counts for the Penta: a random id this browser keeps, nothing else.
     try {
       let v = localStorage.getItem("qube.visitor");
       if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)); localStorage.setItem("qube.visitor", v); }

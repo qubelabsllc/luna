@@ -1,7 +1,7 @@
 -- QÜBE: the central bank, and richer mines.
 -- Run once, after 007. SQL Editor → New query → paste → Run.
 --
--- Points spent at the Hexäğön no longer vanish: every purchase moves them from the
+-- Points spent at the Hexa no longer vanish: every purchase moves them from the
 -- member's wallet to the central bank. Total supply = points in wallets + the bank.
 -- Mines now pay 5 points a day each, so every mine added to an Industrial Square
 -- adds 5 more.

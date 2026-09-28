@@ -771,7 +771,7 @@
       row(kindGlyph(q.kind), `${label} · ${grid.label(q.row, q.col)}`, sub, link(q.kind ? "View →" : "Choose →", "/sfere#" + grid.hash(q.row, q.col)));
     }
     for (let i = 0; i < Number(wallet.squares_available); i++) row(kindGlyph(null), "Unplaced Square", "Pick any open lot on the Sfere", link("Place →", "/sfere"));
-    row("sq empty", "Hexäğön market", `Buy land for 100 points, or add mines to Industrial Squares${nextMine && Number(wallet.industrial) ? " · next mine payout " + nextMine.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }) : ""}`, link("Buy →", "/hexagon"));
+    row("sq empty", "Hexa market", `Buy land for 100 points, or add mines to Industrial Squares${nextMine && Number(wallet.industrial) ? " · next mine payout " + nextMine.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }) : ""}`, link("Buy →", "/hexa"));
   }
 
   // ------------------------------------------------------------------ $POINTS
@@ -805,7 +805,7 @@
     const share = inWallets > 0 ? (Number(wallet.balance) / inWallets) * 100 : 0;
     const tiles = [
       ["In wallets", fmt.format(inWallets), "points members hold now"],
-      ["Central bank", fmt.format(Number(stats.bank ?? stats.spent)), "paid in at the Hexäğön"],
+      ["Central bank", fmt.format(Number(stats.bank ?? stats.spent)), "paid in at the Hexa"],
       ["Mined", fmt.format(Number(stats.mined ?? 0)), `all time · +${fmt.format(Number(stats.daily_mine_output))} a day`],
       ["Minted · 24h", "+" + fmt.format(Number(stats.minted_24h)), "spins, likes, mines, referrals"],
       ["Land price", fmt.format(Number(stats.land_price)), "points per Square"],

@@ -134,8 +134,8 @@
         ctx.beginPath(); ctx.ellipse(x, y, 44 * s, 14 * s, 0, Math.PI - e * Math.PI, Math.PI); ctx.stroke();
       } },
       { label: "Cirqlė", draw: (x, y, s, p) => { drawAgent(x, y, 44 * s, p, 0, 1); } },
-      { label: "Pentäğön", draw: (x, y, s, p) => partialPath(polygon(5, 48 * s, x, y + 3 * s), easeOut(p), true) },
-      { label: "Hexäğön", draw: (x, y, s, p) => partialPath(polygon(6, 46 * s, x, y, -Math.PI / 2), easeOut(p), true) },
+      { label: "Penta", draw: (x, y, s, p) => partialPath(polygon(5, 48 * s, x, y + 3 * s), easeOut(p), true) },
+      { label: "Hexa", draw: (x, y, s, p) => partialPath(polygon(6, 46 * s, x, y, -Math.PI / 2), easeOut(p), true) },
     ];
 
     // Cirqlė: a round agent with eyes. blink: 0 open → 1 shut.
@@ -336,7 +336,7 @@
       });
       if (compact) return;
       const tag = easeOut(seg(t, 17.0, 17.8));
-      display("Minds that remember, and the worlds they live in.", CX, base + 120 + (1 - tag) * 14, 34, 300, tag, INK);
+      display("Simple rules. Emergent worlds.", CX, base + 120 + (1 - tag) * 14, 34, 300, tag, INK);
       const url = easeOut(seg(t, 17.5, 18.2));
       mono("qubelabs.org", CX, base + 190, url, "center", 18, MUTED);
     }
