@@ -433,7 +433,7 @@
   tiles.frustumCulled = false;
   scene.add(tiles);
 
-  const KIND_ID = { residential: 0, industrial: 1, social: 2, capital: 4, pentagon: 5, hexagon: 6 };
+  const KIND_ID = { residential: 0, industrial: 1, social: 2, capital: 4, penta: 5, hexa: 6 };
   function setTiles(list) {
     const n = list.length;
     tileGeo.dispose();
@@ -755,7 +755,7 @@
     const buttons = [];
     if (untyped.length) buttons.push(button("Choose a type", () => focusSquare(untyped[0])));
     else if (mine.length) buttons.push(button("Fly to my Squares", () => focusSquare(mine[0]), avail > 0));
-    buttons.push(button("Market", null, true, "/hexagon"));
+    buttons.push(button("Market", null, true, "/hexa"));
     buttons.push(button("Visit the Capital", focusCapital, true));
     setCard({
       eyebrow: "@" + me.handle,
@@ -779,7 +779,7 @@
       const go = (k) => QUBE.CIVIC.find((x) => x.key === k);
       const enter = c.href
         ? [button(`Enter the ${c.name}`, null, false, c.href)]
-        : [button(`Pentäğön`, null, false, go("pentagon").href), button(`Hexäğön`, null, false, go("hexagon").href)];
+        : [button(`Penta`, null, false, go("penta").href), button(`Hexa`, null, false, go("hexa").href)];
       return setCard({ eyebrow: c.role, title: c.name, sub: `${grid.label(row, col)} · ${grid.coords(row, col)}`, status: c.blurb, swatch: "#111216", buttons: [...enter, button("Close", idleCard, true)] });
     }
     const base = { eyebrow: owner && owner.kind ? KINDS[owner.kind].label + " Square" : "Square", title: grid.label(row, col), sub: `${grid.coords(row, col)} · about 10 × 10 mi` };
@@ -821,7 +821,7 @@
       const mines = owner.mines || 1;
       const extra = owner.kind === "industrial" ? ` · ${mines} mine${mines === 1 ? "" : "s"}, ${mines * QUBE.MINE_RATE} points a day` : owner.kind === "residential" ? (owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet") : "";
       const btns = [close];
-      if (isMine && owner.kind === "industrial" && mines < 9) btns.unshift(button("Add a mine", null, false, `/hexagon#mine-${row}.${col}`));
+      if (isMine && owner.kind === "industrial" && mines < 9) btns.unshift(button("Add a mine", null, false, `/hexa#mine-${row}.${col}`));
       if (isMine && owner.kind === "residential") btns.unshift(button(owner.agent_name ? `Visit ${owner.agent_name}` : "Wake your agent", null, false, "/cirqle"));
       return setCard({ ...base, status: who + extra, swatch: owner.color, buttons: btns });
     }
@@ -830,7 +830,7 @@
     if (!me) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Sign in to claim", null, false, "/points"), close] });
     if (!me.profile_complete) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Finish your profile", null, false, "/points"), close] });
     if (available() <= 0) {
-      return setCard({ ...base, status: "Open · you have no Squares to place", swatch: "open", buttons: [button(`Buy one · ${price} pts`, null, false, "/hexagon"), button("Invite to earn one", null, true, "/points?tab=invites"), close] });
+      return setCard({ ...base, status: "Open · you have no Squares to place", swatch: "open", buttons: [button(`Buy one · ${price} pts`, null, false, "/hexa"), button("Invite to earn one", null, true, "/points?tab=invites"), close] });
     }
     let kind = null;
     const place = button("Place Square", () => confirmPlace(row, col, kind));
@@ -918,7 +918,7 @@
   applyCamera();
   requestAnimationFrame(frame);
   Promise.all([loadData(), landReady]).then(() => {
-    if (location.hash === "#market") return location.replace("/hexagon");
+    if (location.hash === "#market") return location.replace("/hexa");
     const target = grid.parseHash(location.hash);
     if (target) {
       const c = grid.center(target.row, target.col);
@@ -931,7 +931,7 @@
     }
   });
   window.addEventListener("hashchange", () => {
-    if (location.hash === "#market") return location.replace("/hexagon");
+    if (location.hash === "#market") return location.replace("/hexa");
     const t = grid.parseHash(location.hash);
     if (t && (!selected || t.row !== selected.row || t.col !== selected.col)) focusSquare(t);
   });

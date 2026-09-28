@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pentäğön · QÜBE</title>
-<meta name="description" content="The Pentäğön: QÜBE's central government. Members, activity, $Points and land across the ecosystem, live.">
+<title>Penta · QÜBE</title>
+<meta name="description" content="The Penta: QÜBE's central government. Members, activity, $Points and land across the ecosystem, live.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -97,7 +97,7 @@
     <svg class="shape" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.8 20 9.6 16.9 19H7.1L4 9.6Z"/></svg>
     <div>
       <div class="mono">The Capital · Central government</div>
-      <h1>Pentäğön</h1>
+      <h1>Penta</h1>
     </div>
     <p>The state of QÜBE, live. Every number here is public and comes straight from the ledger and the Sfere.</p>
   </header>
@@ -106,7 +106,7 @@
     <span class="live" id="updated">Loading…</span>
   </div>
 
-  <p class="note" id="offline" hidden>The Pentäğön isn't connected to QÜBE's database yet.</p>
+  <p class="note" id="offline" hidden>The Penta isn't connected to QÜBE's database yet.</p>
 
   <section aria-labelledby="h-members">
     <header><h2 id="h-members">Members</h2><span class="mono">Invite only</span></header>
@@ -150,7 +150,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const { api, grid, CIVIC } = window.QUBE;
-  QUBE.nav("pentagon");
+  QUBE.nav("penta");
   const fmt = new Intl.NumberFormat("en-US");
   const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
   const big = (n) => (Math.abs(n) >= 100000 ? compact.format(n) : fmt.format(n));
@@ -158,7 +158,7 @@
   const plural = (n, one, many) => `${fmt.format(n)} ${n === 1 ? one : many}`;
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  const home = CIVIC.find((c) => c.key === "pentagon");
+  const home = CIVIC.find((c) => c.key === "penta");
   $("where").href = "/sfere#" + grid.hash(home.row, home.col);
   $("where").textContent = `${grid.label(home.row, home.col)} · See it on the Sfere →`;
 
@@ -278,14 +278,14 @@
     kpis($("k-points"), [
       ["Total supply", q("supply"), `every point ever minted · <em>+${fmt.format(q("minted_24h"))}</em> today`],
       ["In wallets", q("in_wallets"), `${pct(q("in_wallets"), q("supply"))} of supply, held by members`],
-      ["Central bank", q("bank"), "paid in for land and mines at the Hexäğön"],
+      ["Central bank", q("bank"), "paid in for land and mines at the Hexa"],
       ["Mined", q("mined"), `all time · <em>+${fmt.format(q("daily_mine_output"))}</em> a day from ${plural(n("mines"), "mine", "mines")}`],
     ]);
     kpis($("k-land"), [
       ["Squares claimed", n("squares"), `${pct(n("squares"), n("land_total"))} of ${fmt.format(n("land_total"))} land Squares`],
       ["Mines", n("mines"), `${fmt.format(n("residential"))} residential · ${fmt.format(n("industrial"))} industrial · ${fmt.format(n("social"))} social Squares`],
       ["Agents", n("agents"), `${plural(n("agent_messages"), "message", "messages")} · <em>+${fmt.format(n("agent_messages_24h"))}</em> today`],
-      ["Landowners", n("landowners"), `${plural(n("squares_bought"), "Square", "Squares")} bought at the Hexäğön`],
+      ["Landowners", n("landowners"), `${plural(n("squares_bought"), "Square", "Squares")} bought at the Hexa`],
     ]);
 
     // Merge the two 30-day series by day.

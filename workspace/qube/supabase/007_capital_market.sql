@@ -2,9 +2,9 @@
 -- Run once, after 006. SQL Editor → New query → paste → Run.
 --
 -- The Capital is three civic Squares in a row on the Sfere, which no member can own:
---   SQ 3·352·303  Pentäğön   central government: the ecosystem's numbers (/pentagon)
+--   SQ 3·352·303  Penta   central government: the ecosystem's numbers (/penta)
 --   SQ 3·353·303  Capital    the heart of the Sfere
---   SQ 3·354·303  Hexäğön    central bank: the market (/hexagon)
+--   SQ 3·354·303  Hexa    central bank: the market (/hexa)
 -- Industrial Squares can hold up to 9 mines. Each mine pays 1 point a day.
 
 -- ============================================================ the Capital
@@ -21,9 +21,9 @@ drop policy if exists "civic squares are public" on public.sfere_civic;
 create policy "civic squares are public" on public.sfere_civic for select using (true);
 
 insert into public.sfere_civic (key, "row", col, name) values
-  ('pentagon', 1449, 352, 'Pentäğön'),
+  ('pentagon', 1449, 352, 'Penta'),
   ('capital',  1449, 353, 'QÜBE Capital'),
-  ('hexagon',  1449, 354, 'Hexäğön')
+  ('hexagon',  1449, 354, 'Hexa')
 on conflict (key) do update set "row" = excluded."row", col = excluded.col, name = excluded.name;
 
 -- Squares go on open land only: not water, not the Capital.
@@ -92,7 +92,7 @@ begin
 end $$;
 
 -- ============================================================ mines
--- Every Industrial Square starts with 1 mine. More can be bought at the Hexäğön,
+-- Every Industrial Square starts with 1 mine. More can be bought at the Hexa,
 -- up to 9. The next mine costs 50 points × the mines it already has.
 
 alter table public.squares add column if not exists mines integer not null default 1;
@@ -268,7 +268,7 @@ as $$
   on conflict (day, visitor, path) do update set hits = least(public.site_visits.hits + 1, 500)
 $$;
 
--- ============================================================ the Pentäğön's numbers
+-- ============================================================ the Penta's numbers
 
 create or replace function public.ecosystem_stats()
 returns jsonb

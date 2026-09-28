@@ -87,7 +87,7 @@ Every Square gets a type when it's placed, and the type is permanent.
 | Type | What it does |
 |---|---|
 | Residential | Where the member's agent will live. Decorating comes later. |
-| Industrial | A points mine: 5 points per mine per full day, paid out when the member opens QÜBE (`collect_mines()`). Up to 9 mines, bought at the Hexäğön. |
+| Industrial | A points mine: 5 points per mine per full day, paid out when the member opens QÜBE (`collect_mines()`). Up to 9 mines, bought at the Hexa. |
 | Social | Holds 9 top-level posts. Members need Social Squares to post on the Line; replies don't use slots. Posts fill Social Squares in the order they were placed, and each one shows its posts in a 3 × 3 grid. |
 
 ## The Capital
@@ -96,18 +96,18 @@ Three civic Squares in a row on the Sfere, in Svalbard, belong to QÜBE itself a
 
 | Square | Name | What it is |
 |---|---|---|
-| SQ 3·352·303 | Pentäğön (`/pentagon`) | Central government: live ecosystem numbers from `ecosystem_stats()` and `points_stats()`. |
+| SQ 3·352·303 | Penta (`/penta`) | Central government: live ecosystem numbers from `ecosystem_stats()` and `points_stats()`. |
 | SQ 3·353·303 | QÜBE Capital | The heart of the Sfere. |
-| SQ 3·354·303 | Hexäğön (`/hexagon`) | Central bank: the market. |
+| SQ 3·354·303 | Hexa (`/hexa`) | Central bank: the market. |
 
-The Pentäğön's visitor counts come from `log_visit()`: each browser keeps a random id, and the site stores one row per id, page and day. Nothing else about the visitor is stored.
+The Penta's visitor counts come from `log_visit()`: each browser keeps a random id, and the site stores one row per id, page and day. Nothing else about the visitor is stored.
 
-## The Hexäğön market
+## The Hexa market
 
 - **Land:** a new Square for **100 points** (`buy_square()`). The member then places it on any open land on the Sfere.
 - **Mines:** every Industrial Square starts with 1 mine, and each mine pays 5 points a day (`mine_rate()`). A Square holds up to 9. The next mine costs 50 points × the mines the Square already has (50, 100, … 400), via `upgrade_mine()`, which pays out what the Square has earned first.
 
-Points spent at the Hexäğön aren't destroyed: each purchase moves them from the member's wallet to the **central bank** (`bank_ledger`, filled by a trigger on every `spend` row). Total supply is every point ever minted: points in wallets plus the bank's reserve.
+Points spent at the Hexa aren't destroyed: each purchase moves them from the member's wallet to the **central bank** (`bank_ledger`, filled by a trigger on every `spend` row). Total supply is every point ever minted: points in wallets plus the bank's reserve.
 
 ## $POINTS stats
 
@@ -140,4 +140,4 @@ If a chat fails, the agent now says why: the key is missing or invalid, the Anth
 
 That's all: `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are provided to the function automatically.
 
-**Cost:** the function uses Claude Opus 5 at low effort, with the agent's instructions cached. A chat message costs roughly a cent or two; each member is capped at 60 messages a day (`DAILY_LIMIT` in the function). If a request is declined by Claude's safety checks, it's automatically retried on a fallback model.
+**Cost:** the function uses Claude Sonnet 5 ($2 / $10 per million input / output tokens) at low effort. A chat message costs well under a cent; each member is capped at 60 messages a day (`DAILY_LIMIT` in the function). If Claude declines a message, the agent answers shyly instead of failing.

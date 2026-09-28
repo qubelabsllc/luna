@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hexäğön · QÜBE</title>
-<meta name="description" content="The Hexäğön: QÜBE's central bank and market. Buy land on the Sfere and add mines to your Industrial Squares.">
+<title>Hexa · QÜBE</title>
+<meta name="description" content="The Hexa: QÜBE's central bank and market. Buy land on the Sfere and add mines to your Industrial Squares.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -112,13 +112,13 @@
     <svg class="shape" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 19.4 7.75v8.5L12 20.5l-7.4-4.25v-8.5Z"/></svg>
     <div>
       <div class="mono">The Capital · Central bank</div>
-      <h1>Hexäğön</h1>
+      <h1>Hexa</h1>
     </div>
     <p>The market and the central bank. Points spent here on land and mines go to the bank's reserve.</p>
   </header>
   <div class="where mono">
     <a id="where" href="/sfere">SQ 3·354·303 · See it on the Sfere →</a>
-    <a href="/pentagon">Market numbers at the Pentäğön →</a>
+    <a href="/penta">Market numbers at the Penta →</a>
   </div>
 
   <section class="guest" id="guest" hidden>
@@ -170,11 +170,11 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const { api, grid, CIVIC } = window.QUBE;
-  QUBE.nav("hexagon");
+  QUBE.nav("hexa");
   const fmt = new Intl.NumberFormat("en-US");
   const MAX = 9;
 
-  const home = CIVIC.find((c) => c.key === "hexagon");
+  const home = CIVIC.find((c) => c.key === "hexa");
   $("where").href = "/sfere#" + grid.hash(home.row, home.col);
   $("where").textContent = `${grid.label(home.row, home.col)} · See it on the Sfere →`;
 
