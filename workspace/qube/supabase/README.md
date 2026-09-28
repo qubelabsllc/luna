@@ -134,6 +134,7 @@ The brain is a Supabase Edge Function that calls Claude. It needs an Anthropic A
 
 1. Get an API key at console.anthropic.com → **API Keys**.
 2. In Supabase, open **Edge Functions → Secrets** and add `ANTHROPIC_API_KEY` with that key.
+   If the key isn't scoped to a workspace (the agent says so), also add `ANTHROPIC_WORKSPACE_ID` with the workspace's ID from **Anthropic Console → Settings → Workspaces**, or create the key inside a workspace instead.
 3. Open **Edge Functions → Deploy a new function → Via editor**. Name it exactly `agent-chat`, replace the sample code with `functions/agent-chat/index.ts`, and click **Deploy**.
 
 If a chat fails, the agent now says why: the key is missing or invalid, the Anthropic account is out of credits (add them in the Anthropic Console under **Billing**), or Claude is busy. The full error is in **Edge Functions → agent-chat → Logs**. After changing `index.ts`, deploy it again the same way.

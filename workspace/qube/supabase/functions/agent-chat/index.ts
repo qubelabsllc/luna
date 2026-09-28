@@ -19,7 +19,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.128.0";
 import { createClient } from "npm:@supabase/supabase-js@2.117.2";
 
 const MODEL = "claude-sonnet-5";
-const VERSION = "2026-09-29";    // shown with errors, so you can tell which deploy is live
+const VERSION = "2026-09-29.2";    // shown with errors, so you can tell which deploy is live
 const DAILY_LIMIT = 60;          // member messages per agent per day
 const HISTORY = 30;              // messages of context per reply
 const REFLECT_EVERY = 10;        // member messages between reflections
@@ -33,7 +33,10 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY
+// Reads ANTHROPIC_API_KEY. Keys that aren't scoped to a workspace also need the workspace's ID:
+// set it as the ANTHROPIC_WORKSPACE_ID secret (Anthropic Console → Settings → Workspaces).
+const WORKSPACE = Deno.env.get("ANTHROPIC_WORKSPACE_ID")?.trim();
+const anthropic = new Anthropic(WORKSPACE ? { defaultHeaders: { "anthropic-workspace-id": WORKSPACE } } : {});
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
 // Stable instructions come first so they cache across every agent and turn.
@@ -114,6 +117,9 @@ function explain(err: unknown, name: string): { status: number; error: string } 
   if (err instanceof Anthropic.AuthenticationError) return { status: 503, error: "The agent's brain isn't connected yet: the ANTHROPIC_API_KEY secret is missing or invalid." };
   if (err instanceof Anthropic.PermissionDeniedError) return { status: 503, error: "The Anthropic API key doesn't have access to Claude Sonnet 5." };
   if (err instanceof Anthropic.NotFoundError) return { status: 503, error: "The Anthropic API key can't use Claude Sonnet 5." };
+  if (err instanceof Anthropic.APIError && /workspace/i.test(err.message)) {
+    return { status: 503, error: "The Anthropic API key needs a workspace: use a key created inside a workspace, or add the workspace's ID as the ANTHROPIC_WORKSPACE_ID secret." };
+  }
   if (outOfCredits(err)) return { status: 503, error: "The agent's brain is out of credits. Add credits in the Anthropic Console under Billing." };
   if (err instanceof Anthropic.RateLimitError) return { status: 429, error: `${name} is getting a lot of messages. Try again in a minute.` };
   if (err instanceof Anthropic.APIConnectionError || (err instanceof Anthropic.APIError && (err.status ?? 0) >= 500)) {
