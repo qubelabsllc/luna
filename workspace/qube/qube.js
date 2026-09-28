@@ -81,7 +81,7 @@
   }
   const KINDS = {
     residential: { label: "Residential", blurb: "Home for your agent. Your first one wakes it up." },
-    industrial: { label: "Industrial", blurb: "A points mine. Earns 1 point every day, forever." },
+    industrial: { label: "Industrial", blurb: "A points mine. Each mine earns 1 point a day, and it can hold up to 9." },
     social: { label: "Social", blurb: "Holds 9 of your posts on the Line. You need one to post." },
   };
 
@@ -172,12 +172,16 @@
       invites: () => rpc("my_invites"),
       network: () => rpc("my_network"),
       async mySquares() {
-        return check(await sb.from("squares").select("row, col, kind, claimed_at, last_collected_at").eq("owner", await uid()).order("claimed_at"));
+        return check(await sb.from("squares").select("row, col, kind, mines, claimed_at, last_collected_at").eq("owner", await uid()).order("claimed_at"));
       },
       claimSquare: (row, col, kind) => rpc("claim_square", { p_row: row, p_col: col, p_kind: kind }),
       setSquareKind: (row, col, kind) => rpc("set_square_kind", { p_row: row, p_col: col, p_kind: kind }),
       buySquare: () => rpc("buy_square"),
       collectMines: () => rpc("collect_mines"),
+      myMines: () => rpc("my_mines"),
+      upgradeMine: (row, col) => rpc("upgrade_mine", { p_row: row, p_col: col }),
+      ecosystemStats: () => rpc("ecosystem_stats"),
+      logVisit: (path, visitor) => rpc("log_visit", { p_path: path, p_visitor: visitor }),
       sfereSquares: () => rpc("sfere_squares"),
       squarePosts: (row, col) => rpc("square_posts", { p_row: row, p_col: col }),
       async pointsStats() { return (await rpc("points_stats"))[0]; },
@@ -221,7 +225,7 @@
   // Without Supabase settings the site can't sign anyone in; pages still render.
   function offlineApi() {
     const off = async () => { throw new Error("QÜBE isn't connected to its database yet."); };
-    return new Proxy({ live: false, hasSession: async () => false, sfereSquares: async () => [], feed: async () => [], pointsStats: async () => null },
+    return new Proxy({ live: false, hasSession: async () => false, sfereSquares: async () => [], feed: async () => [], pointsStats: async () => null, ecosystemStats: async () => null, logVisit: async () => {} },
       { get: (t, k) => (k in t ? t[k] : off) });
   }
 
@@ -244,6 +248,17 @@
     return { blob, ext: "jpg", type: "image", previewUrl: URL.createObjectURL(blob) };
   }
 
+  // --------------------------------------------------------------- Capital
+  // Three civic Squares in a row that nobody can own (supabase/007_capital_market.sql).
+  const CIVIC = [
+    { key: "pentagon", row: 1449, col: 352, name: "Pentäğön", role: "Central government", href: "/pentagon",
+      blurb: "The state of QÜBE: members, activity, $Points and land, live." },
+    { key: "capital", row: 1449, col: 353, name: "QÜBE Capital", role: "The Capital", href: null,
+      blurb: "The heart of the Sfere. The Pentäğön keeps the numbers; the Hexäğön keeps the market." },
+    { key: "hexagon", row: 1449, col: 354, name: "Hexäğön", role: "Central bank · Market", href: "/hexagon",
+      blurb: "The market: buy land and add mines to your Industrial Squares." },
+  ];
+
   // ------------------------------------------------------------------- nav
   // One menu for every page. Each page is a shape that matches its name.
   const PAGES = [
@@ -257,6 +272,10 @@
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/><path pathLength="1" d="M4 12c0 2.2 3.6 3.9 8 3.9s8-1.7 8-3.9"/>' },
     { key: "cirqle", label: "Cirqlė", note: "Your agent", href: "/cirqle",
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/>' },
+    { key: "pentagon", label: "Pentäğön", note: "Ecosystem metrics", href: "/pentagon", group: "The Capital",
+      icon: '<path pathLength="1" d="M12 3.8 20 9.6 16.9 19H7.1L4 9.6Z"/>' },
+    { key: "hexagon", label: "Hexäğön", note: "The market", href: "/hexagon", group: "The Capital",
+      icon: '<path pathLength="1" d="M12 3.5 19.4 7.75v8.5L12 20.5l-7.4-4.25v-8.5Z"/>' },
   ];
   const svgIcon = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${inner}</svg>`;
 
@@ -292,7 +311,7 @@
           <span class="qn-chev" aria-hidden="true"></span>
         </button>
         <nav class="qn-panel" id="qn-panel" aria-label="Main" hidden>
-          ${PAGES.map((p, i) => `<a href="${p.href}" class="qn-item" style="--i:${i}"${p.key === active ? ' aria-current="page"' : ""}>
+          ${PAGES.map((p, i) => `${p.group && (!PAGES[i - 1] || PAGES[i - 1].group !== p.group) ? `<div class="qn-sec" aria-hidden="true">${p.group}</div>` : ""}<a href="${p.href}" class="qn-item" style="--i:${i}"${p.key === active ? ' aria-current="page"' : ""}>
             <span class="qn-ic">${svgIcon(p.icon)}</span><span class="qn-tx"><b>${p.label}</b><small>${p.note}</small></span></a>`).join("")}
         </nav>
       </div>
@@ -306,6 +325,7 @@
     const trigger = header.querySelector(".qn-trigger");
     const panel = header.querySelector(".qn-panel");
     const items = [...panel.querySelectorAll(".qn-item")];
+    const rows = [...panel.children];   // items and section labels, for the animation
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const mobile = () => matchMedia("(max-width: 760px)").matches;
     let open = false, running = [];
@@ -334,8 +354,8 @@
         const from = pillInset();
         const dir = mobile() ? 1 : -1;
         play(panel, [{ clipPath: from, transform: `translateY(${dir * -6}px)` }, { clipPath: "inset(0px 0px 0px 0px round 20px)", transform: "none" }], { duration: 620, easing: SPRING });
-        items.forEach((el, i) => {
-          const order = mobile() ? items.length - 1 - i : i;
+        rows.forEach((el, i) => {
+          const order = mobile() ? rows.length - 1 - i : i;
           const delay = 70 + order * 45;
           play(el, [{ opacity: 0, transform: `translateY(${dir * 12}px) scale(.94)`, filter: "blur(6px)" }, { opacity: 1, transform: "none", filter: "blur(0px)" }], { duration: 520, delay, easing: SPRING });
           el.querySelectorAll("[pathLength]").forEach((path) => play(path, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 640, delay: delay + 90, easing: EASE_OUT }));
@@ -346,7 +366,7 @@
         scrim.classList.remove("on");
         if (reduce) { panel.hidden = true; return; }
         const dir = mobile() ? 1 : -1;
-        items.forEach((el) => play(el, [{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(4px)" }], { duration: 140, easing: EASE_OUT }));
+        rows.forEach((el) => play(el, [{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(4px)" }], { duration: 140, easing: EASE_OUT }));
         const a = play(panel, [{ clipPath: "inset(0px 0px 0px 0px round 20px)", transform: "none", opacity: 1 }, { clipPath: pillInset(), transform: `translateY(${dir * -4}px)`, opacity: 0 }], { duration: 260, easing: EASE_OUT });
         a.onfinish = () => { if (!open) { panel.hidden = true; stop(); } };
       }
@@ -364,6 +384,13 @@
       }
     });
     document.addEventListener("pointerdown", (e) => { if (open && !header.querySelector(".qn-menu").contains(e.target)) setOpen(false); });
+
+    // Anonymous page counts for the Pentäğön: a random id this browser keeps, nothing else.
+    try {
+      let v = localStorage.getItem("qube.visitor");
+      if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)); localStorage.setItem("qube.visitor", v); }
+      api.logVisit(location.pathname.toLowerCase().replace(/\/+$/, "") || "/", v).catch(() => {});
+    } catch {}
 
     (async () => {
       try {
@@ -396,5 +423,5 @@
   }
 
   const api = live ? supabaseApi() : offlineApi();
-  window.QUBE = { live, grid, KINDS, avatar, avatarSpec, hslToHex, mix, address, sha256, prepareMedia, nav, setNavUser, api, SPRING };
+  window.QUBE = { live, grid, KINDS, CIVIC, avatar, avatarSpec, hslToHex, mix, address, sha256, prepareMedia, nav, setNavUser, api, SPRING };
 })();

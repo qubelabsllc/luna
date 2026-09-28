@@ -71,6 +71,11 @@
   will-change: clip-path, transform;
 }
 .qn-panel[hidden] { display: none; }
+.qn-sec {
+  margin: 8px 14px 2px 58px; padding-top: 10px; border-top: 1px solid var(--qn-line);
+  font-family: inherit; font-size: 10px; line-height: 1; letter-spacing: 0.14em; text-transform: uppercase; color: var(--qn-muted);
+}
+.qn-sec + .qn-item::before { display: none; }
 .qn-item {
   position: relative;
   display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 14px;

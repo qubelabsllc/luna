@@ -765,13 +765,13 @@
       const label = q.kind ? QUBE.KINDS[q.kind].label : "Untyped";
       let sub = grid.coords(q.row, q.col);
       if (q.kind === "social") { const n = Math.max(0, Math.min(9, postsLeft)); postsLeft -= 9; sub = `${n} of 9 posts · ` + sub; }
-      if (q.kind === "industrial") sub = "Mining 1 point a day · " + sub;
+      if (q.kind === "industrial") sub = `Mining ${q.mines || 1} point${(q.mines || 1) === 1 ? "" : "s"} a day · ` + sub;
       if (q.kind === "residential") sub = "Agent home · " + sub;
       if (!q.kind) sub = "Needs a type · " + sub;
       row(kindGlyph(q.kind), `${label} · ${grid.label(q.row, q.col)}`, sub, link(q.kind ? "View →" : "Choose →", "/sfere#" + grid.hash(q.row, q.col)));
     }
     for (let i = 0; i < Number(wallet.squares_available); i++) row(kindGlyph(null), "Unplaced Square", "Pick any open lot on the Sfere", link("Place →", "/sfere"));
-    row("sq empty", "Sfere market", `Buy a new Square for 100 points${nextMine && Number(wallet.industrial) ? " · next mine payout " + nextMine.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }) : ""}`, link("Buy →", "/sfere#market"));
+    row("sq empty", "Hexäğön market", `Buy land for 100 points, or add mines to Industrial Squares${nextMine && Number(wallet.industrial) ? " · next mine payout " + nextMine.toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }) : ""}`, link("Buy →", "/hexagon"));
   }
 
   // ------------------------------------------------------------------ $POINTS

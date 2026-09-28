@@ -396,12 +396,12 @@
     if (me && Number(me.post_slots) === 0) {
       const g = document.createElement("div");
       g.className = "guest";
-      g.innerHTML = '<span>Posting needs a Social Square. Each one holds 9 of your posts.</span><div><a class="btn" href="/sfere">Place one</a><a class="btn ghost" href="/sfere#market">Buy a Square</a></div>';
+      g.innerHTML = '<span>Posting needs a Social Square. Each one holds 9 of your posts.</span><div><a class="btn" href="/sfere">Place one</a><a class="btn ghost" href="/hexagon">Buy a Square</a></div>';
       slot.append(g);
     } else if (me && Number(me.posts_used) >= Number(me.post_slots)) {
       const g = document.createElement("div");
       g.className = "guest";
-      g.innerHTML = `<span>Your Social Squares are full: ${me.posts_used} of ${me.post_slots} posts. Add another Social Square to post more.</span><div><a class="btn" href="/sfere#market">Buy a Square</a></div>`;
+      g.innerHTML = `<span>Your Social Squares are full: ${me.posts_used} of ${me.post_slots} posts. Add another Social Square to post more.</span><div><a class="btn" href="/hexagon">Buy a Square</a></div>`;
       slot.append(g);
     } else if (me) {
       slot.append(composer({ onPosted: () => { toast("Posted"); mountComposer(); loadFeed(); } }));

@@ -91,6 +91,14 @@
   .price b { font: 300 22px/1 var(--display); font-variant-numeric: tabular-nums; }
 
   .help { position: fixed; z-index: 2; right: var(--gutter); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); text-align: right; pointer-events: none; }
+  .capital { position: fixed; z-index: 3; left: 0; top: 0; display: flex; align-items: center; gap: 0; pointer-events: auto; cursor: pointer; border: 0; padding: 0; background: none; opacity: 0; transition: opacity 0.3s; will-change: transform; }
+  .capital.on { opacity: 1; }
+  .capital::before { content: ""; width: 18px; height: 1px; background: var(--ink); opacity: 0.5; }
+  .capital span { background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 11px 6px 9px; font: 400 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; }
+  .capital span i { width: 7px; height: 7px; background: var(--accent); border-radius: 1px; transform: rotate(45deg); }
+  .capital:hover span { background: var(--accent); }
+  .capital:focus-visible { outline: none; }
+  .capital:focus-visible span { outline: 1px solid var(--accent); outline-offset: 3px; }
   .toast { position: fixed; z-index: 40; left: 50%; top: calc(80px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
   .toast.show { opacity: 1; }
   .fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
@@ -132,6 +140,7 @@
 <div class="legend mono"><span><i class="res"></i>Residential</span><span><i class="ind"></i>Industrial</span><span><i class="soc"></i>Social</span></div>
 <div class="help mono">Drag to turn · Scroll to zoom · Click a Square</div>
 <div class="toast" id="toast" role="status"></div>
+<button class="capital" id="capital" type="button" aria-label="Fly to the QÜBE Capital"><span><i></i>QÜBE Capital</span></button>
 
 <script src="/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
@@ -312,15 +321,18 @@
       varying vec2 vUv;
       varying vec3 vColor;
       varying float vKind, vPosts, vPx, vAgent, vClip;
-      varying vec2 vCell;
+      varying vec2 vCell, vUp;
       varying vec3 vPos;
       void main() {
         vAgent = aAgent;
+        // North, in the tile's own (right, up) axes, so civic shapes stand upright.
+        vec3 north = normalize(vec3(0.0, 1.0, 0.0) - aCenter * aCenter.y + 1e-6);
+        vUp = normalize(vec2(dot(north, aR), dot(north, aT)) + 1e-6);
         vec2 s = max(aSize, vec2(uMinWorld));
         vec3 pos = aCenter * 1.0009 + position.x * s.x * aR + position.y * s.y * aT;
         vPos = pos;
         // Zoomed in, a tile is its real Square and stops at the shore; zoomed out it's a marker.
-        vClip = step(uMinWorld, aSize.x);
+        vClip = step(uMinWorld, aSize.x) * step(aKind, 3.5);   // the Capital is drawn whole
         vUv = uv; vColor = aColor; vKind = aKind; vPosts = aPosts; vCell = aCell;
         vPx = s.x / uPxWorld;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -333,8 +345,24 @@
       varying vec2 vUv;
       varying vec3 vColor;
       varying float vKind, vPosts, vPx, vAgent, vClip;
-      varying vec2 vCell;
+      varying vec2 vCell, vUp;
       varying vec3 vPos;
+      // Signed distances for the Capital's shapes (after Inigo Quilez).
+      float sdPentagon(vec2 p, float r) {
+        const vec3 k = vec3(0.809016994, 0.587785252, 0.726542528);
+        p.x = abs(p.x);
+        p -= 2.0 * min(dot(vec2(-k.x, k.y), p), 0.0) * vec2(-k.x, k.y);
+        p -= 2.0 * min(dot(vec2(k.x, k.y), p), 0.0) * vec2(k.x, k.y);
+        p -= vec2(clamp(p.x, -r * k.z, r * k.z), r);
+        return length(p) * sign(p.y);
+      }
+      float sdHexagon(vec2 p, float r) {
+        const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
+        p = abs(p.yx);
+        p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+        p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
+        return length(p) * sign(p.y);
+      }
       void main() {
         if (vClip > 0.5) {
           vec3 p = normalize(vPos);
@@ -360,8 +388,8 @@
         } else if (vKind < 0.5) {                       // residential: solid, with an inner frame
           float f = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
           c = mix(base, soft, detail * (1.0 - smoothstep(0.17, 0.19, f)) * smoothstep(0.12, 0.14, f));
-        } else if (vKind < 1.5) {                       // industrial: mine stripes
-          float s = step(0.5, fract((vUv.x + vUv.y) * 5.0));
+        } else if (vKind < 1.5) {                       // industrial: more mines, more stripes
+          float s = step(0.5, fract((vUv.x + vUv.y) * (3.0 + vPosts)));
           c = mix(base, mix(base, soft, s), detail);
         } else if (vKind < 2.5) {                       // social: 3 × 3 post slots
           vec2 g = vUv * 3.0;
@@ -371,6 +399,25 @@
           float gl = max(1.0 - smoothstep(0.0, 0.05, min(abs(g.x - 1.0), abs(g.x - 2.0))),
                          1.0 - smoothstep(0.0, 0.05, min(abs(g.y - 1.0), abs(g.y - 2.0))));
           c = mix(mix(base, soft, 0.35), mix(fill, vec3(1.0), gl * 0.9), detail);
+        } else if (vKind > 3.5) {                       // the Capital: ink tiles with a white shape
+          vec2 q = (vUv - 0.5) * 2.0;
+          q = vec2(dot(q, vec2(vUp.y, -vUp.x)), dot(q, vUp));   // x east, y north
+          float aa = 2.4 / max(vPx, 1.0);
+          float w = max(0.045, 1.2 / max(vPx, 1.0));
+          float d, dots = 0.0;
+          if (vKind < 4.5) {                            // Capital: the Ü of QÜBE
+            vec2 a = abs(q - vec2(0.0, -0.1));
+            d = abs(max(a.x, a.y) - 0.36) - w;
+            dots = max(1.0 - smoothstep(0.075 - aa, 0.075, length(q - vec2(-0.17, 0.52))),
+                       1.0 - smoothstep(0.075 - aa, 0.075, length(q - vec2(0.17, 0.52))));
+          } else if (vKind < 5.5) {
+            d = abs(sdPentagon(q, 0.46)) - w;
+          } else {
+            d = abs(sdHexagon(q, 0.52)) - w;
+          }
+          float shape = (1.0 - smoothstep(-aa * 0.5, aa * 0.5, d)) * smoothstep(6.0, 12.0, vPx);
+          c = mix(uInk, vec3(1.0), shape);
+          c = mix(c, uAccent, dots * smoothstep(6.0, 12.0, vPx));
         } else {                                        // not typed yet
           c = mix(base, soft, 0.5);
         }
@@ -386,7 +433,7 @@
   tiles.frustumCulled = false;
   scene.add(tiles);
 
-  const KIND_ID = { residential: 0, industrial: 1, social: 2 };
+  const KIND_ID = { residential: 0, industrial: 1, social: 2, capital: 4, pentagon: 5, hexagon: 6 };
   function setTiles(list) {
     const n = list.length;
     tileGeo.dispose();
@@ -408,7 +455,7 @@
       const cc = new THREE.Color(s.color || "#9aa0aa");
       col.set([cc.r, cc.g, cc.b], i * 3);
       kind[i] = s.kind in KIND_ID ? KIND_ID[s.kind] : 3;
-      posts[i] = s.posts || 0;
+      posts[i] = s.kind === "industrial" ? s.mines || 1 : s.posts || 0;
       agentF[i] = s.agent_name ? 1 : 0;
     });
     const set = (name, arr, k) => tileGeo.setAttribute(name, new THREE.InstancedBufferAttribute(arr, k));
@@ -615,13 +662,16 @@
 
   // ------------------------------------------------------------------ data
   let me = null, allSquares = [], byCell = new Map(), selected = null;
+  const CIVIC_TILES = QUBE.CIVIC.map((c) => ({ row: c.row, col: c.col, kind: c.key, color: "#111216", civic: c }));
+  const capital = QUBE.CIVIC.find((c) => c.key === "capital");
 
   async function loadData() {
     const signedIn = await api.hasSession().catch(() => false);
     me = signedIn ? await api.wallet().catch(() => null) : null;
-    allSquares = await api.sfereSquares().catch(() => []);
+    const owned = await api.sfereSquares().catch(() => []);
+    $("claimed-count").textContent = `${fmt.format(owned.length)} claimed`;
+    allSquares = [...owned, ...CIVIC_TILES];
     byCell = new Map(allSquares.map((s) => [s.row + "." + s.col, s]));
-    $("claimed-count").textContent = `${fmt.format(allSquares.length)} claimed`;
     setTiles(allSquares);
   }
 
@@ -693,7 +743,7 @@
       return setCard({
         eyebrow: "Invite only", title: "Own a piece of the Sfere",
         sub: "Every member gets one free Square. Invite people or buy more with points.",
-        buttons: [button("Sign in", null, false, "/points"), button("Join with an invite", null, true, "/join")],
+        buttons: [button("Sign in", null, false, "/points"), button("Join with an invite", null, true, "/join"), button("Visit the Capital", focusCapital, true)],
       });
     }
     if (!me.profile_complete) {
@@ -705,7 +755,8 @@
     const buttons = [];
     if (untyped.length) buttons.push(button("Choose a type", () => focusSquare(untyped[0])));
     else if (mine.length) buttons.push(button("Fly to my Squares", () => focusSquare(mine[0]), avail > 0));
-    buttons.push(button(`Buy a Square · ${price} pts`, marketCard, true));
+    buttons.push(button("Market", null, true, "/hexagon"));
+    buttons.push(button("Visit the Capital", focusCapital, true));
     setCard({
       eyebrow: "@" + me.handle,
       title: avail > 0 ? `${avail} Square${avail === 1 ? "" : "s"} to place` : `You own ${mine.length} Square${mine.length === 1 ? "" : "s"}`,
@@ -718,40 +769,19 @@
     });
   }
 
-  function marketCard() {
-    const body = document.createElement("div");
-    body.className = "price";
-    body.innerHTML = `<span class="mono">Land · 1 Square</span><b>${price} pts</b>`;
-    const bal = Number(me.balance);
-    setCard({
-      eyebrow: "Sfere market", title: "Buy a Square",
-      sub: `You have ${fmt.format(bal)} points. After buying, pick any open Square on the Sfere and choose its type.`,
-      body,
-      buttons: [button(bal >= price ? "Buy for 100 points" : `Need ${fmt.format(price - bal)} more points`, buy), button("Back", selected ? () => select(selected.row, selected.col) : idleCard, true)],
-    });
-    if (bal < price) $("card-btns").firstChild.disabled = true;
-  }
-
-  async function buy() {
-    const b = $("card-btns").firstChild;
-    b.disabled = true; b.textContent = "Buying…";
-    try {
-      await api.buySquare();
-      await loadData();
-      QUBE.setNavUser(me);
-      toast("Bought. Pick an open Square to place it.");
-      selected ? select(selected.row, selected.col) : idleCard();
-    } catch (err) {
-      $("card-err").textContent = err.message;
-      b.disabled = false; b.textContent = "Buy for 100 points";
-    }
-  }
-
   async function select(row, col) {
     selected = { row, col };
     uniforms.uSel.value.set(row, col);
     history.replaceState(null, "", "#" + grid.hash(row, col));
     const owner = byCell.get(row + "." + col);
+    if (owner && owner.civic) {
+      const c = owner.civic;
+      const go = (k) => QUBE.CIVIC.find((x) => x.key === k);
+      const enter = c.href
+        ? [button(`Enter the ${c.name}`, null, false, c.href)]
+        : [button(`Pentäğön`, null, false, go("pentagon").href), button(`Hexäğön`, null, false, go("hexagon").href)];
+      return setCard({ eyebrow: c.role, title: c.name, sub: `${grid.label(row, col)} · ${grid.coords(row, col)}`, status: c.blurb, swatch: "#111216", buttons: [...enter, button("Close", idleCard, true)] });
+    }
     const base = { eyebrow: owner && owner.kind ? KINDS[owner.kind].label + " Square" : "Square", title: grid.label(row, col), sub: `${grid.coords(row, col)} · about 10 × 10 mi` };
     const close = button("Close", idleCard, true);
 
@@ -788,8 +818,10 @@
         }
         return;
       }
-      const extra = owner.kind === "industrial" ? " · mines 1 point a day" : owner.kind === "residential" ? (owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet") : "";
+      const mines = owner.mines || 1;
+      const extra = owner.kind === "industrial" ? ` · ${mines} mine${mines === 1 ? "" : "s"}, ${mines} point${mines === 1 ? "" : "s"} a day` : owner.kind === "residential" ? (owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet") : "";
       const btns = [close];
+      if (isMine && owner.kind === "industrial" && mines < 9) btns.unshift(button("Add a mine", null, false, `/hexagon#mine-${row}.${col}`));
       if (isMine && owner.kind === "residential") btns.unshift(button(owner.agent_name ? `Visit ${owner.agent_name}` : "Wake your agent", null, false, "/cirqle"));
       return setCard({ ...base, status: who + extra, swatch: owner.color, buttons: btns });
     }
@@ -798,7 +830,7 @@
     if (!me) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Sign in to claim", null, false, "/points"), close] });
     if (!me.profile_complete) return setCard({ ...base, status: "Open", swatch: "open", buttons: [button("Finish your profile", null, false, "/points"), close] });
     if (available() <= 0) {
-      return setCard({ ...base, status: "Open · you have no Squares to place", swatch: "open", buttons: [button(`Buy one · ${price} pts`, marketCard), button("Invite to earn one", null, true, "/points?tab=invites"), close] });
+      return setCard({ ...base, status: "Open · you have no Squares to place", swatch: "open", buttons: [button(`Buy one · ${price} pts`, null, false, "/hexagon"), button("Invite to earn one", null, true, "/points?tab=invites"), close] });
     }
     let kind = null;
     const place = button("Place Square", () => confirmPlace(row, col, kind));
@@ -831,6 +863,27 @@
     }
   }
 
+  function focusCapital() {
+    const c = grid.center(capital.row, capital.col);
+    flyTo(c.lat, c.lon, 0.035, () => select(capital.row, capital.col));
+  }
+  $("capital").addEventListener("click", focusCapital);
+  // The Capital's label rides along with the globe while its side faces you.
+  const capVec = (() => { const d = grid.dir(capital.row, capital.col); return new THREE.Vector3(d[0], d[1], d[2]); })();
+  const capProj = new THREE.Vector3();
+  function placeCapitalLabel() {
+    const el = $("capital");
+    const facing = capVec.dot(camera.position.clone().normalize());
+    const show = facing > 0.25 && !(selected && byCell.get(selected.row + "." + selected.col)?.civic);
+    el.classList.toggle("on", show);
+    el.tabIndex = show ? 0 : -1;
+    if (!show) return;
+    capProj.copy(capVec).multiplyScalar(1.001).project(camera);
+    const x = (capProj.x * 0.5 + 0.5) * window.innerWidth, y = (-capProj.y * 0.5 + 0.5) * window.innerHeight;
+    const half = Math.max(7, cellPx()) / 2;
+    el.style.transform = `translate(${Math.round(x + half + 4)}px, ${Math.round(y - 12)}px)`;
+  }
+
   function focusSquare(s) {
     const c = grid.center(s.row, s.col);
     flyTo(c.lat, c.lon, 0.05, () => select(s.row, s.col));
@@ -857,6 +910,7 @@
     }
     applyCamera();
     renderer.render(scene, camera);
+    placeCapitalLabel();
     requestAnimationFrame(frame);
   }
 
@@ -864,7 +918,7 @@
   applyCamera();
   requestAnimationFrame(frame);
   Promise.all([loadData(), landReady]).then(() => {
-    if (location.hash === "#market" && me && me.profile_complete) { idleCard(); return marketCard(); }
+    if (location.hash === "#market") return location.replace("/hexagon");
     const target = grid.parseHash(location.hash);
     if (target) {
       const c = grid.center(target.row, target.col);
@@ -877,6 +931,7 @@
     }
   });
   window.addEventListener("hashchange", () => {
+    if (location.hash === "#market") return location.replace("/hexagon");
     const t = grid.parseHash(location.hash);
     if (t && (!selected || t.row !== selected.row || t.col !== selected.col)) focusSquare(t);
   });

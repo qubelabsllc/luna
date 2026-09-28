@@ -33,6 +33,14 @@
       "destination": "/workspace/qube/cirqle.html"
     },
     {
+      "source": "/pentagon",
+      "destination": "/workspace/qube/pentagon.html"
+    },
+    {
+      "source": "/hexagon",
+      "destination": "/workspace/qube/hexagon.html"
+    },
+    {
       "source": "/config.js",
       "destination": "/workspace/qube/config.js"
     },

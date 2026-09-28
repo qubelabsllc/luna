@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hexäğön · QÜBE</title>
+<meta name="description" content="The Hexäğön: QÜBE's central bank and market. Buy land on the Sfere and add mines to your Industrial Squares.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/qube.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --ink: #111216;
+    --muted: #6b6f78;
+    --faint: #f5f6f8;
+    --line: #e4e6ea;
+    --accent: #3a3df5;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 5vw, 64px);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 8px var(--gutter) 96px; display: flex; flex-direction: column; gap: 48px; }
+  .head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 20px 28px; padding-block: 16px 20px; border-bottom: 1px solid var(--ink); }
+  .head .shape { width: 64px; height: 64px; align-self: center; }
+  .head h1 { margin: 8px 0 0; font: 200 clamp(36px, 6vw, 52px)/1 var(--display); }
+  .head p { margin: 0; max-width: 34ch; color: var(--muted); font-size: 15px; }
+  .where { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: -32px; }
+  .where a { text-decoration: none; }
+  .where a:hover { color: var(--accent); }
+
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat { padding: 0 20px 0 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .stat + .stat { padding-left: 20px; border-left: 1px solid var(--line); }
+  .stat b { font: 200 clamp(30px, 5vw, 44px)/1 var(--display); font-variant-numeric: tabular-nums; }
+  .stat .s { font-size: 14px; color: var(--muted); }
+
+  .stalls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 24px; align-items: start; }
+  .stall { border: 1px solid var(--line); border-radius: 8px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .stall h2 { margin: 0; font: 300 24px/1.15 var(--display); }
+  .stall p { margin: 0; color: var(--muted); font-size: 15px; max-width: 46ch; }
+  .price { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 14px; }
+  .price b { font: 200 34px/1 var(--display); font-variant-numeric: tabular-nums; }
+  .price b small { font: 400 12px/1 var(--mono); letter-spacing: 0.08em; color: var(--muted); margin-left: 6px; }
+  .tile { width: 100%; aspect-ratio: 3 / 1; border-radius: 4px; background: var(--faint); display: grid; place-items: center; }
+  .tile svg { width: 64px; height: 64px; }
+
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .btn { border: 0; border-radius: 999px; background: var(--ink); color: #fff; padding: 12px 18px; font: 500 14px/1 var(--body); text-decoration: none; display: inline-block; cursor: pointer; transition: background 0.2s, opacity 0.2s; white-space: nowrap; }
+  .btn:hover:not(:disabled) { background: var(--accent); }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn.ghost:hover:not(:disabled) { background: var(--faint); }
+  .btn.sure { background: var(--accent); }
+  .btn.sm { padding: 9px 14px; font-size: 13px; }
+  .msg { font-size: 14px; min-height: 1.4em; margin: 0; }
+  .msg.err { color: #c2352b; }
+  .msg a { color: var(--accent); }
+
+  .mines { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .mine { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .mine.hl { background: linear-gradient(90deg, rgba(58, 61, 245, 0.06), transparent 70%); }
+  .mine h3 { margin: 0; font: 300 17px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+  .mine h3 a { text-decoration: none; }
+  .mine h3 a:hover { color: var(--accent); }
+  .mine .s { font-size: 13px; color: var(--muted); }
+  .pips { display: flex; gap: 4px; margin-top: 8px; }
+  .pips i { width: 12px; height: 12px; border: 1px solid var(--line); background: #fff; }
+  .pips i.on { border-color: transparent; background: var(--c, var(--ink)); }
+  .pips i.new { animation: pop 0.6s cubic-bezier(.2, 1.4, .4, 1); }
+  @keyframes pop { from { transform: scale(0); } }
+  .none { color: var(--muted); font-size: 15px; padding: 16px 0 4px; margin: 0; }
+
+  .guest { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+  .guest p { margin: 0; max-width: 46ch; color: var(--muted); }
+  .ledger { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+  .ledger div { padding: 16px 16px 0 0; display: flex; flex-direction: column; gap: 4px; }
+  .ledger div + div { padding-left: 16px; border-left: 1px solid var(--line); }
+  .ledger b { font: 300 22px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 820px) {
+    .stalls { grid-template-columns: 1fr; }
+    .ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ledger div:nth-child(3) { padding-left: 0; border-left: 0; }
+  }
+  @media (max-width: 560px) {
+    .head { grid-template-columns: auto minmax(0, 1fr); }
+    .head p { grid-column: 1 / -1; }
+    .head .shape { width: 48px; height: 48px; }
+    .stat { padding-right: 10px; }
+    .stat + .stat { padding-left: 12px; }
+    .mine { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pips i.new { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <svg class="shape" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 19.4 7.75v8.5L12 20.5l-7.4-4.25v-8.5Z"/></svg>
+    <div>
+      <div class="mono">The Capital · Central bank</div>
+      <h1>Hexäğön</h1>
+    </div>
+    <p>The market. Spend points on land and mines. Points spent here leave circulation for good.</p>
+  </header>
+  <div class="where mono">
+    <a id="where" href="/sfere">SQ 3·354·303 · See it on the Sfere →</a>
+    <a href="/pentagon">Market numbers at the Pentäğön →</a>
+  </div>
+
+  <section class="guest" id="guest" hidden>
+    <p>The market is for QÜBE members. Sign in to buy land and mines with your points.</p>
+    <div class="btns"><a class="btn" href="/points">Sign in</a><a class="btn ghost" href="/join">Join with an invite</a></div>
+  </section>
+
+  <section class="stats" id="wallet" hidden aria-label="Your wallet">
+    <div class="stat"><span class="mono">Balance</span><b id="bal">0</b><span class="s">points to spend</span></div>
+    <div class="stat"><span class="mono">To place</span><b id="avail">0</b><span class="s">Squares ready for the Sfere</span></div>
+    <div class="stat"><span class="mono">Mining</span><b id="rate">0</b><span class="s">points a day</span></div>
+  </section>
+
+  <div class="stalls">
+    <section class="stall" aria-labelledby="h-land">
+      <div class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="0.6"/></svg></div>
+      <span class="mono">Land</span>
+      <h2 id="h-land">A Square on the Sfere</h2>
+      <p>About 10 × 10 miles of open land, anywhere you like. You choose Residential, Industrial or Social when you place it.</p>
+      <div class="price"><b id="land-price">100<small>PTS</small></b><span class="mono">1 Square</span></div>
+      <div class="btns"><button class="btn" id="buy-land" type="button" disabled>Buy land</button></div>
+      <p class="msg" id="land-msg" aria-live="polite"></p>
+    </section>
+
+    <section class="stall" id="mines" aria-labelledby="h-mines">
+      <span class="mono">Mines</span>
+      <h2 id="h-mines">Upgrade your Industrial Squares</h2>
+      <p>Every Industrial Square starts with 1 mine. Each mine pays 1 point a day, and a Square holds up to 9. The next mine costs 50 points for every mine the Square already has.</p>
+      <ul class="mines" id="mine-list"></ul>
+      <p class="msg" id="mine-msg" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <section aria-labelledby="h-ledger">
+    <div class="mono" id="h-ledger" style="margin-bottom: 4px">Across QÜBE</div>
+    <div class="ledger">
+      <div><span class="mono">Land price</span><b id="m-price">—</b></div>
+      <div><span class="mono">Squares claimed</span><b id="m-squares">—</b></div>
+      <div><span class="mono">Points spent</span><b id="m-spent">—</b></div>
+      <div><span class="mono">Mined per day</span><b id="m-mined">—</b></div>
+    </div>
+  </section>
+</main>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="/qube.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { api, grid, CIVIC } = window.QUBE;
+  QUBE.nav("hexagon");
+  const fmt = new Intl.NumberFormat("en-US");
+  const MAX = 9;
+
+  const home = CIVIC.find((c) => c.key === "hexagon");
+  $("where").href = "/sfere#" + grid.hash(home.row, home.col);
+  $("where").textContent = `${grid.label(home.row, home.col)} · See it on the Sfere →`;
+
+  let me = null, mines = [], landPrice = 100, fresh = null;
+
+  // Spending is two taps: the first arms the button, the second buys.
+  function twoStep(btn, label, confirmLabel, run) {
+    let armed = false, timer;
+    btn.textContent = label;
+    btn.onclick = async () => {
+      if (!armed) {
+        armed = true; btn.classList.add("sure"); btn.textContent = confirmLabel;
+        timer = setTimeout(() => { armed = false; btn.classList.remove("sure"); btn.textContent = label; }, 4000);
+        return;
+      }
+      clearTimeout(timer); armed = false; btn.classList.remove("sure");
+      btn.disabled = true; btn.textContent = "One moment…";
+      await run();
+    };
+  }
+
+  function renderWallet() {
+    $("bal").textContent = fmt.format(Number(me.balance));
+    $("avail").textContent = fmt.format(Number(me.squares_available));
+    $("rate").textContent = fmt.format(mines.reduce((a, m) => a + m.per_day, 0));
+  }
+
+  function renderLand() {
+    const bal = Number(me.balance), b = $("buy-land");
+    b.disabled = bal < landPrice;
+    if (bal < landPrice) { b.textContent = `Need ${fmt.format(landPrice - bal)} more points`; b.onclick = null; return; }
+    twoStep(b, `Buy land · ${fmt.format(landPrice)} pts`, `Confirm · spend ${fmt.format(landPrice)} pts`, async () => {
+      $("land-msg").className = "msg"; $("land-msg").textContent = "";
+      try {
+        await api.buySquare();
+        await refresh();
+        $("land-msg").innerHTML = 'Bought. <a href="/sfere">Place it on the Sfere →</a>';
+      } catch (err) {
+        $("land-msg").className = "msg err"; $("land-msg").textContent = err.message;
+        renderLand();
+      }
+    });
+  }
+
+  function renderMines() {
+    const list = $("mine-list");
+    list.replaceChildren();
+    if (!mines.length) {
+      list.innerHTML = '<li class="none">You don\'t have an Industrial Square yet. Buy land, then place it on the Sfere as Industrial.</li>';
+      return;
+    }
+    const target = /^#mine-(\d+)\.(\d+)$/.exec(location.hash);
+    for (const m of mines) {
+      const li = document.createElement("li");
+      li.className = "mine" + (target && +target[1] === m.row && +target[2] === m.col ? " hl" : "");
+      li.style.setProperty("--c", me.color || "#111216");
+      const pips = Array.from({ length: MAX }, (_, i) => `<i class="${i < m.mines ? "on" : ""}${fresh === m.row + "." + m.col && i === m.mines - 1 ? " new" : ""}"></i>`).join("");
+      li.innerHTML = `<div>
+          <h3><a href="/sfere#${grid.hash(m.row, m.col)}">${grid.label(m.row, m.col)}</a></h3>
+          <div class="s">${m.mines} mine${m.mines === 1 ? "" : "s"} · ${m.per_day} point${m.per_day === 1 ? "" : "s"} a day · ${grid.coords(m.row, m.col)}</div>
+          <div class="pips" role="img" aria-label="${m.mines} of ${MAX} mines">${pips}</div>
+        </div>`;
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "btn sm";
+      if (m.next_price == null) { btn.textContent = "Full · 9 mines"; btn.disabled = true; }
+      else if (Number(me.balance) < m.next_price) { btn.textContent = `Next mine · ${fmt.format(m.next_price)} pts`; btn.disabled = true; btn.title = "Not enough points"; }
+      else {
+        twoStep(btn, `Add a mine · ${fmt.format(m.next_price)} pts`, `Confirm · ${fmt.format(m.next_price)} pts`, async () => {
+          $("mine-msg").className = "msg"; $("mine-msg").textContent = "";
+          try {
+            await api.upgradeMine(m.row, m.col);
+            fresh = m.row + "." + m.col;
+            await refresh();
+            $("mine-msg").textContent = `Mine ${m.mines + 1} is running. That Square now pays ${m.mines + 1} points a day.`;
+          } catch (err) {
+            $("mine-msg").className = "msg err"; $("mine-msg").textContent = err.message;
+            renderMines();
+          }
+        });
+      }
+      li.append(btn);
+      list.append(li);
+    }
+    fresh = null;
+  }
+
+  async function market() {
+    const p = await api.pointsStats().catch(() => null);
+    if (!p) return;
+    landPrice = Number(p.land_price) || 100;
+    $("land-price").innerHTML = `${fmt.format(landPrice)}<small>PTS</small>`;
+    $("m-price").textContent = fmt.format(landPrice) + " pts";
+    $("m-squares").textContent = fmt.format(Number(p.squares_claimed));
+    $("m-spent").textContent = fmt.format(Number(p.spent));
+    $("m-mined").textContent = fmt.format(Number(p.daily_mine_output));
+  }
+
+  async function refresh() {
+    me = await api.wallet().catch(() => null);
+    if (!me) return;
+    mines = (await api.myMines().catch(() => [])) || [];
+    QUBE.setNavUser(me);
+    renderWallet(); renderLand(); renderMines();
+    market();
+  }
+
+  (async () => {
+    await market();
+    const signedIn = await api.hasSession().catch(() => false);
+    if (!signedIn) {
+      $("guest").hidden = false;
+      $("buy-land").textContent = "Sign in to buy";
+      $("mine-list").innerHTML = '<li class="none">Sign in to see your Industrial Squares.</li>';
+      return;
+    }
+    $("wallet").hidden = false;
+    await refresh();
+    if (location.hash.startsWith("#mine")) $("mines").scrollIntoView({ block: "start" });
+  })();
+})();
+</script>
+</body>
+</html>
