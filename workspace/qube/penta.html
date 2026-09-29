@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Penta · QÜBE</title>
-<meta name="description" content="The Penta: QÜBE's central government. Members, activity, $Points and land across the ecosystem, live.">
+<meta name="description" content="The Penta: QÜBE's Central Intelligence. Members, activity, $Points and land across the ecosystem, live.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -96,7 +96,7 @@
   <header class="head">
     <svg class="shape" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.8 20 9.6 16.9 19H7.1L4 9.6Z"/></svg>
     <div>
-      <div class="mono">The Capital · Central government</div>
+      <div class="mono">The Capital · Central Intelligence</div>
       <h1>Penta</h1>
     </div>
     <p>The state of QÜBE, live. Every number here is public and comes straight from the ledger and the Sfere.</p>
@@ -278,7 +278,7 @@
     kpis($("k-points"), [
       ["Total supply", q("supply"), `every point ever minted · <em>+${fmt.format(q("minted_24h"))}</em> today`],
       ["In wallets", q("in_wallets"), `${pct(q("in_wallets"), q("supply"))} of supply, held by members`],
-      ["Central bank", q("bank"), "paid in for land and mines at the Hexa"],
+      ["Central Bank", q("bank"), "paid in for land and mines at the Hexa"],
       ["Mined", q("mined"), `all time · <em>+${fmt.format(q("daily_mine_output"))}</em> a day from ${plural(n("mines"), "mine", "mines")}`],
     ]);
     kpis($("k-land"), [

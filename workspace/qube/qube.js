@@ -82,8 +82,12 @@
   const KINDS = {
     residential: { label: "Residential", blurb: "Home for your agent. Your first one wakes it up." },
     industrial: { label: "Industrial", blurb: "A points mine. Each mine earns 5 points a day, and it can hold up to 9." },
-    social: { label: "Social", blurb: "Holds 9 of your posts on the Line. You need one to post." },
+    social: { label: "Social", blurb: "Holds 9 of your posts on the Līnē. You need one to post." },
+    agricultural: { label: "Agricultural", blurb: "A Tokenberry field. Harvest 9 tokenberries a day from the Sfere to feed your agent." },
+    promotional: { label: "Promotional", blurb: "A billboard. Choose one image and it shows on your Square on the Sfere." },
   };
+  // The color of a ripe Tokenberry.
+  const BERRY = "#e33a6d";
 
   // --------------------------------------------------------------- avatars
   // Concentric rings around a solid core, seeded by the member's id, in the
@@ -188,16 +192,29 @@
       myPointsSeries: () => rpc("my_points_series"),
       feed: (before) => rpc("line_feed", { p_before: before || null, p_limit: 30 }),
       thread: (id) => rpc("line_thread", { p_id: id }),
-      async post({ body, media, parentId }) {
-        let url = null, type = null;
-        if (media) {
-          const path = `${await uid()}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${media.ext}`;
-          check(await sb.storage.from("line-media").upload(path, media.blob, { contentType: media.blob.type, upsert: false }));
-          url = sb.storage.from("line-media").getPublicUrl(path).data.publicUrl;
-          type = media.type;
-        }
-        return rpc("create_post", { p_body: body, p_media_url: url, p_media_type: type, p_parent_id: parentId || null });
+      // Uploads to the member's own folder and returns the public URL.
+      async upload(media) {
+        const path = `${await uid()}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${media.ext}`;
+        check(await sb.storage.from("line-media").upload(path, media.blob, { contentType: media.blob.type, upsert: false }));
+        return sb.storage.from("line-media").getPublicUrl(path).data.publicUrl;
       },
+      async post({ body, media, parentId }) {
+        const url = media ? await this.upload(media) : null;
+        return rpc("create_post", { p_body: body, p_media_url: url, p_media_type: media ? media.type : null, p_parent_id: parentId || null });
+      },
+      async setSquareImage(row, col, media) {
+        return rpc("set_square_image", { p_row: row, p_col: col, p_url: await this.upload(media) });
+      },
+      harvest: (row, col) => rpc("harvest_square", { p_row: row, p_col: col }),
+      myBerries: () => rpc("my_berries"),
+      async agentStatus() { return (await rpc("agent_status"))[0] || null; },
+      feedAgent: (n) => rpc("feed_agent", { p_berries: n }),
+      marketOpen: () => rpc("market_open"),
+      marketStats: () => rpc("market_stats"),
+      listSquare: (row, col, price) => rpc("list_square", { p_row: row, p_col: col, p_price: price }),
+      listBerries: (quantity, unitPrice) => rpc("list_berries", { p_quantity: quantity, p_unit_price: unitPrice }),
+      cancelListing: (id) => rpc("cancel_listing", { p_id: id }),
+      buyListing: (id, quantity) => rpc("buy_listing", { p_id: id, p_quantity: quantity ?? null }),
       myAgent: async () => (await rpc("my_agent"))[0] || null,
       createAgent: (name) => rpc("create_agent", { p_name: name }),
       async agentMessages(agentId, before) {
@@ -231,7 +248,7 @@
   // Without Supabase settings the site can't sign anyone in; pages still render.
   function offlineApi() {
     const off = async () => { throw new Error("QÜBE isn't connected to its database yet."); };
-    return new Proxy({ live: false, hasSession: async () => false, sfereSquares: async () => [], feed: async () => [], pointsStats: async () => null, ecosystemStats: async () => null, logVisit: async () => {} },
+    return new Proxy({ live: false, hasSession: async () => false, sfereSquares: async () => [], feed: async () => [], pointsStats: async () => null, marketOpen: async () => [], marketStats: async () => null, ecosystemStats: async () => null, logVisit: async () => {} },
       { get: (t, k) => (k in t ? t[k] : off) });
   }
 
@@ -258,14 +275,30 @@
   // Three civic Squares in a row that nobody can own (supabase/007_capital_market.sql).
   // Every mine on an Industrial Square pays this many points a day (mine_rate() in SQL).
   const MINE_RATE = 5;
+  // The Capital: a 3 × 3 block of civic Squares that nobody can own (supabase/009_berries_markets.sql).
+  // Its buildings open their pages; Customs and the Arcade are only reachable from here.
   const CIVIC = [
-    { key: "penta", row: 1449, col: 352, name: "Penta", role: "Central government", href: "/penta",
+    { key: "bank", shape: "bank", row: 1448, col: 352, name: "Central Bank", role: "The Capital · Central Bank", href: "/points",
+      blurb: "Your $Points wallet, and the reserve where every point spent at the market ends up." },
+    { key: "penta", shape: "penta", row: 1449, col: 352, name: "Penta", tag: "Central Intelligence", role: "The Capital · Central Intelligence", href: "/penta",
       blurb: "The state of QÜBE: members, activity, $Points and land, live." },
-    { key: "capital", row: 1449, col: 353, name: "QÜBE Capital", role: "The Capital", href: null,
-      blurb: "The heart of the Sfere. The Penta keeps the numbers; the Hexa keeps the market." },
-    { key: "hexa", row: 1449, col: 354, name: "Hexa", role: "Central bank · Market", href: "/hexa",
-      blurb: "The market: buy land and add mines to your Industrial Squares." },
+    { key: "line", shape: "line", row: 1450, col: 352, name: "The Līnē", role: "The Capital · The feed", href: "/line",
+      blurb: "Where members post, reply and earn a point for every like." },
+    { key: "plaza_w", shape: "plaza", row: 1448, col: 353, name: "Capital Plaza", role: "The Capital", href: null,
+      blurb: "Open ground in the Capital, kept for whatever QÜBE builds next." },
+    { key: "capital", shape: "capital", row: 1449, col: 353, name: "QÜBE Capital", role: "The Capital", href: null,
+      blurb: "The heart of the Sfere, where QÜBE keeps its institutions." },
+    { key: "plaza_e", shape: "plaza", row: 1450, col: 353, name: "Capital Plaza", role: "The Capital", href: null,
+      blurb: "Open ground in the Capital, kept for whatever QÜBE builds next." },
+    { key: "customs", shape: "customs", row: 1448, col: 354, name: "Customs", role: "The Capital · Customs", href: "/customs",
+      blurb: "Coming soon." },
+    { key: "hexa", shape: "hexa", row: 1449, col: 354, name: "Hexa", tag: "Central Market", role: "The Capital · Central Market", href: "/hexa",
+      blurb: "Buy land and mines from the bank, or trade Squares and tokenberries with other members." },
+    { key: "arcade", shape: "arcade", row: 1450, col: 354, name: "Arcade", role: "The Capital · Arcade", href: "/arcade",
+      blurb: "Coming soon." },
   ];
+  // The label shown on the map for each building.
+  CIVIC.forEach((c) => { c.tag = c.tag || c.name; });
 
   // ------------------------------------------------------------------- nav
   // One menu for every page. Each page is a shape that matches its name.
@@ -280,9 +313,9 @@
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/><path pathLength="1" d="M4 12c0 2.2 3.6 3.9 8 3.9s8-1.7 8-3.9"/>' },
     { key: "cirqle", label: "Cirqlė", note: "Your agent", href: "/cirqle",
       icon: '<circle pathLength="1" cx="12" cy="12" r="8"/>' },
-    { key: "penta", label: "Penta", note: "Ecosystem metrics", href: "/penta", group: "The Capital",
+    { key: "penta", label: "Penta", note: "Central Intelligence", href: "/penta", group: "The Capital",
       icon: '<path pathLength="1" d="M12 3.8 20 9.6 16.9 19H7.1L4 9.6Z"/>' },
-    { key: "hexa", label: "Hexa", note: "The market", href: "/hexa", group: "The Capital",
+    { key: "hexa", label: "Hexa", note: "Central Market", href: "/hexa", group: "The Capital",
       icon: '<path pathLength="1" d="M12 3.5 19.4 7.75v8.5L12 20.5l-7.4-4.25v-8.5Z"/>' },
   ];
   const svgIcon = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">${inner}</svg>`;
@@ -431,5 +464,5 @@
   }
 
   const api = live ? supabaseApi() : offlineApi();
-  window.QUBE = { live, grid, KINDS, CIVIC, MINE_RATE, avatar, avatarSpec, hslToHex, mix, address, sha256, prepareMedia, nav, setNavUser, api, SPRING };
+  window.QUBE = { live, grid, KINDS, CIVIC, MINE_RATE, BERRY, avatar, avatarSpec, hslToHex, mix, address, sha256, prepareMedia, nav, setNavUser, api, SPRING };
 })();

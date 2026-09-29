@@ -49,6 +49,14 @@
       "destination": "/workspace/qube/hexa.html"
     },
     {
+      "source": "/customs",
+      "destination": "/workspace/qube/customs.html"
+    },
+    {
+      "source": "/arcade",
+      "destination": "/workspace/qube/arcade.html"
+    },
+    {
       "source": "/config.js",
       "destination": "/workspace/qube/config.js"
     },
