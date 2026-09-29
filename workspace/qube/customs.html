@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customs · QÜBE</title>
+<meta name="description" content="Customs, in the QÜBE Capital on the Sfere. Coming soon.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/qube.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff; --ink: #111216; --muted: #6b6f78; --line: #e4e6ea; --accent: #3a3df5;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 5vw, 64px);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  main { min-height: calc(100svh - 90px); display: grid; place-items: center; padding: 24px var(--gutter) 120px; text-align: center; }
+  .soon { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 40ch; }
+  .tile { width: 132px; height: 132px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; animation: rise 0.9s cubic-bezier(.2, .8, .2, 1) both; }
+  .tile svg { width: 84px; height: 84px; }
+  .tile [pathLength] { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.2s 0.35s cubic-bezier(.2, .8, .2, 1) forwards; }
+  h1 { margin: 6px 0 0; font: 200 clamp(44px, 8vw, 72px)/1 var(--display); }
+  p { margin: 0; color: var(--muted); }
+  .back { margin-top: 10px; text-decoration: none; }
+  .back:hover { color: var(--accent); }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px) scale(0.96); } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .tile, .tile [pathLength] { animation: none; stroke-dashoffset: 0; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="soon">
+    <div class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><path pathLength="1" d="M5.5 5.5h13v13h-13z"/><path pathLength="1" d="M12 5.5v13"/></svg></div>
+    <div class="mono">The Capital · Customs</div>
+    <h1>Customs</h1>
+    <p>Coming soon. The gate between QÜBE and the world outside it.</p>
+    <a class="back mono" href="/sfere#1449.353">← Back to the Capital</a>
+  </div>
+</main>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="/qube.js"></script>
+<script>QUBE.nav(null);</script>
+</body>
+</html>

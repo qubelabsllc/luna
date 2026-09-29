@@ -61,6 +61,15 @@
   .stat + .stat { border-left: 1px solid var(--line); }
   .stat b { font: 300 22px/1 var(--display); font-variant-numeric: tabular-nums; }
   .row-links { display: flex; gap: 20px; }
+  .hunger { width: min(100%, 380px); display: flex; flex-direction: column; gap: 10px; }
+  .hunger-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .meter { height: 8px; border-radius: 999px; background: var(--faint); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--me); transition: width 0.8s cubic-bezier(.2, .8, .2, 1), background 0.3s; }
+  .meter.low i { background: #e33a6d; }
+  .feed { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .feed .berries { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; margin-right: auto; }
+  .feed .berries::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #e33a6d; }
+  .btn.sm { padding: 9px 14px; font-size: 13px; }
 
   /* ---------- chat */
   .chat { display: flex; flex-direction: column; height: min(720px, calc(100svh - 120px)); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: #fff; }
@@ -162,6 +171,16 @@
         <div class="stat"><span class="mono">Bond</span><b id="st-bond">0</b></div>
         <div class="stat"><span class="mono">Memories</span><b id="st-mem">0</b></div>
       </div>
+      <div class="hunger" id="hunger">
+        <div class="hunger-top"><span class="mono">Fullness</span><span class="mono" id="full-text">—</span></div>
+        <div class="meter" id="meter" role="meter" aria-label="Fullness" aria-valuemin="0" aria-valuemax="100"><i id="meter-fill"></i></div>
+        <div class="feed">
+          <span class="berries" id="berry-count">0 tokenberries</span>
+          <button class="btn ghost sm" id="feed-one" type="button">Feed 1</button>
+          <button class="btn sm" id="feed-full" type="button">Fill up</button>
+          <a class="btn ghost sm" id="get-berries" href="/hexa#secondary" hidden>Get tokenberries</a>
+        </div>
+      </div>
       <div class="row-links mono">
         <a id="home-link" href="/sfere">Home</a>
         <button class="linklike mono" id="open-mind" type="button">Mind</button>
@@ -214,6 +233,7 @@
     shy:        { label: "Shy",        bounce: 0,    wiggle: 0,  breathe: 0.9, eyes: "open",  tilt: 6,  look: [0.3, 0.7], blush: true },
     thinking:   { label: "Thinking",   bounce: 0,    wiggle: 0,  breathe: 0.8, eyes: "open",  tilt: -4, look: [0.55, -0.8], orbit: 3 },
     listening:  { label: "Listening",  bounce: 0,    wiggle: 0,  breathe: 1,   eyes: "open",  tilt: 5,  look: [0.7, 0.35], lean: 5 },
+    hungry:     { label: "Hungry",     bounce: 0,    wiggle: 0,  breathe: 0.45, eyes: "sad",  tilt: -6, look: [0, 0.7], sink: 5 },
     asleep:     { label: "Dormant",    bounce: 0,    wiggle: 0,  breathe: 0.35, eyes: "closed", tilt: 0, look: [0, 0.3], zz: true },
   };
 
@@ -411,6 +431,10 @@
     $("home-link").href = "/sfere#" + grid.hash(agent.home_row, agent.home_col);
     $("home-link").textContent = "Home · " + grid.label(agent.home_row, agent.home_col);
     renderStats();
+    loadHunger();
+    setInterval(loadHunger, 60000);
+    $("feed-one").addEventListener("click", () => feed(1));
+    $("feed-full").addEventListener("click", () => feed(99));
 
     // Pet it. Look at the pointer.
     $("stage").addEventListener("click", () => pet.poke());
@@ -432,6 +456,54 @@
     rows.forEach((m) => addMsg(m.role, m.content, false));
     scrollDown(false);
     setupComposer();
+  }
+
+  // ======================================================== hunger
+  // Fullness drops 2 an hour and 4 per message; each tokenberry adds 10. At 0 it won't talk.
+  let status = null;
+  const hungry = () => status && status.fullness <= 0;
+  async function loadHunger() {
+    status = await api.agentStatus().catch(() => null);
+    renderHunger();
+  }
+  function renderHunger() {
+    if (!status) { $("hunger").hidden = true; return; }
+    $("hunger").hidden = false;
+    const f = Math.max(0, Math.min(100, status.fullness)), b = Number(status.berries) || 0;
+    $("meter-fill").style.width = f + "%";
+    $("meter").classList.toggle("low", f < 25);
+    $("meter").setAttribute("aria-valuenow", String(f));
+    $("full-text").textContent = f <= 0 ? "Starving" : f < 25 ? `${f}% · hungry` : `${f}%`;
+    $("berry-count").textContent = `${b} tokenberr${b === 1 ? "y" : "ies"}`;
+    const need = Math.ceil((100 - f) / 10);
+    $("feed-one").disabled = b < 1 || f >= 100;
+    $("feed-full").disabled = b < 1 || f >= 100;
+    $("feed-full").textContent = f >= 100 ? "Full" : `Fill up · ${Math.min(need, b)}`;
+    $("get-berries").hidden = b > 0;
+    if (pet) {
+      if (f < 25 && !busy && pet.mood !== "thinking") pet.mood = "hungry";
+      else if (pet.mood === "hungry" && f >= 25) pet.mood = agent.mood || "calm";
+    }
+    const ta = $("input");
+    if (ta) {
+      ta.placeholder = f <= 0 ? `${agent.name} is too hungry to talk. Feed it tokenberries.` : "Say something…";
+      ta.disabled = f <= 0;
+      $("send").disabled = f <= 0 || busy || !ta.value.trim();
+    }
+    if (pet) $("mood-text").textContent = (MOODS[pet.mood] || MOODS.calm).label;
+  }
+  async function feed(n) {
+    $("feed-one").disabled = $("feed-full").disabled = true;
+    try {
+      const before = status ? status.fullness : 0;
+      const after = await api.feedAgent(n);
+      await loadHunger();
+      if (after > before) { pet.mood = "happy"; pet.ripple(); setTimeout(() => { if (pet.mood === "happy") pet.mood = agent.mood || "calm"; renderStats(); }, 2500); }
+      renderStats();
+    } catch (err) {
+      addMsg("error", err.message); scrollDown();
+      renderHunger();
+    }
   }
 
   function renderStats() {
@@ -496,9 +568,11 @@
         const fresh = await api.myAgent().catch(() => null);
         if (fresh) agent.memories = fresh.memories;
         renderStats();
+        loadHunger();
       } catch (err) {
         typing.remove();
         addMsg("error", err.message); scrollDown();
+        loadHunger();
         pet.mood = "sad";
         setTimeout(() => { if (pet.mood === "sad") pet.mood = agent.mood || "calm"; }, 4000);
       } finally {

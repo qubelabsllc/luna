@@ -19,7 +19,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.128.0";
 import { createClient } from "npm:@supabase/supabase-js@2.117.2";
 
 const MODEL = "claude-sonnet-5";
-const VERSION = "2026-09-29.2";    // shown with errors, so you can tell which deploy is live
+const VERSION = "2026-09-29.3";    // shown with errors, so you can tell which deploy is live
 const DAILY_LIMIT = 60;          // member messages per agent per day
 const HISTORY = 30;              // messages of context per reply
 const REFLECT_EVERY = 10;        // member messages between reflections
@@ -192,6 +192,13 @@ async function handle(req: Request): Promise<Response> {
 
   const { data: agent } = await admin.from("agents").select("id, name, messages_count").eq("owner", uid).maybeSingle();
   if (!agent) return json({ error: "You don't have an agent yet." }, 404);
+
+  // Hungry agents don't talk. Fullness drops 2 an hour (agent_fullness() in SQL); a message costs 4.
+  const { data: belly } = await admin.from("agents").select("fullness, fullness_at").eq("id", agent.id).maybeSingle();
+  if (belly && belly.fullness_at) {
+    const now = Number(belly.fullness) - (2 * (Date.now() - new Date(belly.fullness_at).getTime())) / 3600000;
+    if (now <= 0) return json({ error: `${agent.name} is too hungry to talk. Feed it tokenberries.`, hungry: true }, 402);
+  }
   const { data: profile } = await admin.from("profiles").select("handle").eq("id", uid).single();
   const handle = profile?.handle ?? "you";
 
@@ -257,6 +264,7 @@ async function handle(req: Request): Promise<Response> {
 
   const messagesCount = (agent.messages_count ?? 0) + 1;
   await admin.from("agents").update({ mood, messages_count: messagesCount, last_talked_at: new Date().toISOString() }).eq("id", agent.id);
+  if (belly) await admin.rpc("agent_eat", { p_agent: agent.id });   // talking makes it hungrier
 
   if (messagesCount % REFLECT_EVERY === 0) {
     const job = reflect(agent, handle).catch(() => {});

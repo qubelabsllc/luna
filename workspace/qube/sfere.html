@@ -22,6 +22,7 @@
     --accent: #3a3df5;
     --ocean: #fafbfc;
     --land: #e3e6ec;
+    --berry: #e33a6d;
     --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
     --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -50,6 +51,8 @@
   .legend i { width: 12px; height: 12px; display: inline-block; box-shadow: inset 0 0 0 1px var(--ink); }
   .legend i.res { background: var(--ink); }
   .legend i.ind { background: repeating-linear-gradient(45deg, var(--ink) 0 2px, #fff 2px 4px); }
+  .legend i.agr { background: radial-gradient(circle, var(--berry) 0 2px, transparent 2.5px) 0 0 / 6px 6px, #fff; }
+  .legend i.pro { background: linear-gradient(#fff, #fff) 3px 3px / 6px 6px no-repeat, var(--ink); }
   .legend i.soc { background: linear-gradient(var(--ink), var(--ink)) 33% 0 / 1px 100% no-repeat, linear-gradient(var(--ink), var(--ink)) 66% 0 / 1px 100% no-repeat, linear-gradient(var(--ink), var(--ink)) 0 33% / 100% 1px no-repeat, linear-gradient(var(--ink), var(--ink)) 0 66% / 100% 1px no-repeat, #fff; }
 
   .card {
@@ -87,6 +90,7 @@
   .slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .slot p { margin: 0; padding: 8px; font-size: 11.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; color: #fff; }
   .slot:hover { filter: brightness(1.05); }
+  .promo { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px; }
   .price { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   .price b { font: 300 22px/1 var(--display); font-variant-numeric: tabular-nums; }
 
@@ -99,6 +103,9 @@
   .capital:hover span { background: var(--accent); }
   .capital:focus-visible { outline: none; }
   .capital:focus-visible span { outline: 1px solid var(--accent); outline-offset: 3px; }
+  .ctag { position: fixed; z-index: 2; left: 0; top: 0; border: 0; cursor: pointer; background: rgba(255, 255, 255, 0.94); color: var(--ink); border-radius: 999px; padding: 4px 9px; font: 400 10px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; box-shadow: 0 1px 6px rgba(17, 18, 22, 0.18); opacity: 0; pointer-events: none; transition: opacity 0.25s; will-change: transform; }
+  .ctag.on { opacity: 1; pointer-events: auto; }
+  .ctag:hover { background: var(--accent); color: #fff; }
   .toast { position: fixed; z-index: 40; left: 50%; top: calc(80px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
   .toast.show { opacity: 1; }
   .fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
@@ -137,7 +144,7 @@
   <div class="btns" id="card-btns"></div>
 </section>
 
-<div class="legend mono"><span><i class="res"></i>Residential</span><span><i class="ind"></i>Industrial</span><span><i class="soc"></i>Social</span></div>
+<div class="legend mono"><span><i class="res"></i>Residential</span><span><i class="ind"></i>Industrial</span><span><i class="soc"></i>Social</span><span><i class="agr"></i>Agricultural</span><span><i class="pro"></i>Promotional</span></div>
 <div class="help mono">Drag to turn · Scroll to zoom · Click a Square</div>
 <div class="toast" id="toast" role="status"></div>
 <button class="capital" id="capital" type="button" aria-label="Fly to the QÜBE Capital"><span><i></i>QÜBE Capital</span></button>
@@ -203,8 +210,38 @@
       }
     }`;
 
+  // ------------------------------------------------------------------ Squares
+  // Every claimed Square is drawn by the globe's own shader, from a data texture with one
+  // texel per cell: exact to the grid, clipped at the shore, true size at every zoom.
+  //   rgb = owner color (or an image slot), a = kind << 4 | extra
+  const CELLS_W = 2048, CELLS_H = 1024;
+  const cellData = new Uint8Array(CELLS_W * CELLS_H * 4);
+  const cellTex = new THREE.DataTexture(cellData, CELLS_W, CELLS_H, THREE.RGBAFormat);
+  cellTex.magFilter = cellTex.minFilter = THREE.NearestFilter;
+  cellTex.generateMipmaps = false;
+  cellTex.needsUpdate = true;
+  // Zoomed far out a Square is smaller than a pixel, so the claims are also painted into
+  // a map texture whose mipmaps average them honestly: small stays small, nothing overlaps.
+  const claimsCanvas = document.createElement("canvas");
+  claimsCanvas.width = 4096; claimsCanvas.height = 2048;
+  const claimsTex = new THREE.CanvasTexture(claimsCanvas);
+  claimsTex.premultiplyAlpha = true;
+  // Promotional images share one atlas: 16 × 16 slots of 128 px.
+  const promoCanvas = document.createElement("canvas");
+  promoCanvas.width = promoCanvas.height = 2048;
+  const promoTex = new THREE.CanvasTexture(promoCanvas);
+  promoTex.generateMipmaps = false;
+  promoTex.minFilter = THREE.LinearFilter;
+
+  // Kind ids shared with the shader.
+  const KIND_ID = { residential: 1, industrial: 2, social: 3, agricultural: 4, promotional: 5, promo_image: 6, untyped: 7,
+    capital: 8, penta: 9, hexa: 10, bank: 11, line: 12, customs: 13, arcade: 14, plaza: 15 };
+
   const uniforms = {
     uLand: { value: landTex },
+    uCells: { value: cellTex },
+    uClaims: { value: claimsTex },
+    uPromo: { value: promoTex },
     uOcean: { value: color("--ocean") },
     uLandColor: { value: color("--land") },
     uInk: { value: color("--ink") },
@@ -228,23 +265,132 @@
         }`,
       fragmentShader: `
         precision highp float;
-        uniform sampler2D uLand;
+        uniform sampler2D uLand, uCells, uClaims, uPromo;
         uniform vec3 uOcean, uLandColor, uInk, uAccent, uLight;
         uniform vec2 uHover, uSel;
         varying vec3 vPos;
         varying vec3 vViewNormal;
         ${GRID_GLSL}
         float lineMask(float f, float w) { float d = min(f, 1.0 - f); return 1.0 - smoothstep(0.0, w, d); }
+        float fill(float d, float aa) { return 1.0 - smoothstep(-aa, aa, d); }
+        float sdBox(vec2 p, vec2 b) { vec2 d = abs(p) - b; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0); }
+        float sdPentagon(vec2 p, float r) {
+          const vec3 k = vec3(0.809016994, 0.587785252, 0.726542528);
+          p.x = abs(p.x);
+          p -= 2.0 * min(dot(vec2(-k.x, k.y), p), 0.0) * vec2(-k.x, k.y);
+          p -= 2.0 * min(dot(vec2(k.x, k.y), p), 0.0) * vec2(k.x, k.y);
+          p -= vec2(clamp(p.x, -r * k.z, r * k.z), r);
+          return length(p) * sign(p.y);
+        }
+        float sdHexagon(vec2 p, float r) {
+          const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
+          p = abs(p.yx);
+          p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+          p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
+          return length(p) * sign(p.y);
+        }
+        float sdTriangle(vec2 p, float r) {     // pointing east: a play button
+          p = vec2(-p.y, p.x);
+          const float k = 1.7320508;
+          p.x = abs(p.x) - r; p.y = p.y + r / k;
+          if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+          p.x -= clamp(p.x, -2.0 * r, 0.0);
+          return -length(p) * sign(p.y);
+        }
+
+        // One claimed Square. uv: 0..1 across the cell; q: -1..1, north up; px: cell width in pixels.
+        vec4 square(float kind, float extra, vec3 base, vec4 cd, vec2 uv, vec2 q, float px, float sale) {
+          vec3 soft = mix(base, vec3(1.0), 0.62);
+          float aa = 2.0 / max(px, 1.0);
+          float detail = smoothstep(9.0, 20.0, px);
+          vec3 c = base;
+          float ring = abs(fract(extra / 2.0) * 2.0);   // extra & 1
+          if (kind < 1.5) {                                   // residential
+            if (ring > 0.5) {                                 // …with an agent: its circle lives here
+              float d = length(q);
+              c = mix(mix(base, soft, 0.72), base, fill(d - 0.68, aa));
+              c = mix(c, base, (1.0 - smoothstep(0.0, aa * 1.5, abs(d - 0.82))) * detail);
+              float eyes = max(fill(length((q - vec2(-0.15, 0.08)) * vec2(1.0, 0.75)) - 0.07, aa),
+                               fill(length((q - vec2(0.15, 0.08)) * vec2(1.0, 0.75)) - 0.07, aa));
+              c = mix(c, vec3(1.0), eyes * detail);
+            } else {
+              float f = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+              c = mix(base, soft, detail * (1.0 - smoothstep(0.17, 0.19, f)) * smoothstep(0.12, 0.14, f));
+            }
+          } else if (kind < 2.5) {                            // industrial: more mines, more stripes
+            float s = step(0.5, fract((uv.x + uv.y) * (3.0 + extra)));
+            c = mix(base, mix(base, soft, s), detail);
+          } else if (kind < 3.5) {                            // social: 3 × 3 post slots
+            vec2 g = vec2(q.x + 1.0, 1.0 - q.y) * 1.5;
+            float slot = floor(g.x) + 3.0 * floor(g.y);
+            vec3 f = slot < extra ? base : soft;
+            float gl = max(1.0 - smoothstep(0.0, 0.05, min(abs(g.x - 1.0), abs(g.x - 2.0))),
+                           1.0 - smoothstep(0.0, 0.05, min(abs(g.y - 1.0), abs(g.y - 2.0))));
+            c = mix(mix(base, soft, 0.35), mix(f, vec3(1.0), gl * 0.9), detail);
+          } else if (kind < 4.5) {                            // agricultural: a Tokenberry field
+            vec3 field = mix(base, vec3(1.0), 0.8);
+            vec2 g = (q + 1.0) * 2.0;                         // 4 × 4 bushes in rows
+            float row = 1.0 - smoothstep(0.1, 0.1 + aa * 2.0, abs(fract(g.y) - 0.5));
+            c = mix(base, mix(field, mix(base, vec3(1.0), 0.45), row), detail);
+            vec2 cellp = fract(g) - 0.5;
+            float bush = fill(length(cellp) - 0.24, aa * 2.0);
+            vec3 berry = vec3(0.89, 0.23, 0.43);
+            c = mix(c, extra > 0.5 ? berry : base, bush * detail);
+          } else if (kind < 5.5) {                            // promotional, no image yet: an empty billboard
+            float frame = abs(sdBox(q, vec2(0.62, 0.42))) - 0.05;
+            c = mix(mix(base, soft, 0.55 * detail), base, fill(frame, aa) * detail);
+          } else if (kind < 6.5) {                            // promotional with its image
+            // Keep the image upright: turn it by the quarter turn closest to north.
+            vec2 u = q;
+            vec2 slotRG = floor(cd.rg * 255.0 + 0.5);
+            float slotI = slotRG.x + slotRG.y * 256.0;
+            vec2 slot = vec2(mod(slotI, 16.0), floor(slotI / 16.0));
+            vec2 iu = clamp((u + 1.0) * 0.5, 0.0, 1.0);
+            vec2 auv = (slot + vec2(0.03) + vec2(iu.x, 1.0 - iu.y) * 0.94) / 16.0;
+            c = texture2D(uPromo, vec2(auv.x, 1.0 - auv.y)).rgb;
+            c = mix(vec3(0.62), c, smoothstep(6.0, 12.0, px));
+          } else if (kind < 7.5) {                            // not typed yet
+            c = mix(base, soft, 0.5);
+          } else {                                            // the Capital: ink, with a white shape
+            float w = max(0.05, 1.3 / max(px, 1.0));
+            float d = 10.0, dots = 0.0;
+            if (kind < 8.5) {                                 // Capital: the Ü of QÜBE
+              vec2 a = abs(q - vec2(0.0, -0.1));
+              d = abs(max(a.x, a.y) - 0.36) - w;
+              dots = max(fill(length(q - vec2(-0.17, 0.52)) - 0.075, aa), fill(length(q - vec2(0.17, 0.52)) - 0.075, aa));
+            } else if (kind < 9.5) d = abs(sdPentagon(q, 0.46)) - w;
+            else if (kind < 10.5) d = abs(sdHexagon(q, 0.52)) - w;
+            else if (kind < 11.5) d = length(q) - 0.2;                                // Central Bank: the point
+            else if (kind < 12.5) d = sdBox(q, vec2(0.52, w));                        // The Līnē
+            else if (kind < 13.5) d = min(abs(sdBox(q, vec2(0.42, 0.42))) - w, sdBox(q, vec2(w, 0.42)));   // Customs: a gate
+            else if (kind < 14.5) d = abs(sdTriangle(q - vec2(0.06, 0.0), 0.36)) - w; // Arcade: play
+            else d = length(q) - 0.06;                                                 // Plaza
+            if (kind > 14.5) {                                                         // Plaza: light open ground
+              c = mix(mix(vec3(1.0), uInk, 0.1), uInk, 0.5 * fill(d, aa) * smoothstep(5.0, 11.0, px));
+            } else {
+              c = mix(uInk, vec3(1.0), fill(d, aa) * smoothstep(5.0, 11.0, px));
+            }
+            c = mix(c, uAccent, dots * smoothstep(5.0, 11.0, px));
+          }
+          // Hairline edges, measured in pixels so they stay crisp.
+          float e = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y)) * px;
+          c = mix(c, mix(base, uInk, 0.35), (1.0 - smoothstep(0.6, 1.4, e)) * (kind > 7.5 ? 0.0 : 1.0));
+          // For sale: an accent corner.
+          vec2 corner = vec2(1.0) - vec2(q.x, q.y);
+          c = mix(c, uAccent, sale * step(corner.x + corner.y, 0.42) * smoothstep(10.0, 16.0, px));
+          return vec4(c, 1.0);
+        }
+
         void main() {
           vec3 p = normalize(vPos);
           float lat = degrees(asin(clamp(p.y, -1.0, 1.0)));
           float lon = degrees(atan(-p.z, p.x));
+          vec2 mapUv = vec2((lon + 180.0) / 360.0, (lat + 90.0) / 180.0);
 
-          float land = texture(uLand, vec2((lon + 180.0) / 360.0, (lat + 90.0) / 180.0)).r;
+          float land = texture2D(uLand, mapUv).r;
           float onLand = smoothstep(0.35, 0.65, land);
           vec3 c = mix(uOcean, uLandColor, onLand);
 
-          // Faint cube edges: the six faces of the Sfere.
           float face; vec3 n, r, t;
           cubeFace(p, face, n, r, t);
           float d = dot(p, n);
@@ -252,21 +398,48 @@
           float gj = (atan(dot(p, t) / d) + QPI4) / (2.0 * QPI4) * QN;
           float wi = min(fwidth(gi), 0.5), wj = min(fwidth(gj), 0.5);
 
-          // Coarse guide grid (every 57.3 Squares ≈ 10 per face edge) for the far view.
+          // Coarse guide grid for the far view.
           float ci = gi / 57.3, cj = gj / 57.3;
           float coarse = max(lineMask(fract(ci), min(fwidth(ci), 0.5) * 0.8), lineMask(fract(cj), min(fwidth(cj), 0.5) * 0.8));
           c = mix(c, uInk, coarse * 0.06);
 
-          // The Square grid fades in once a Square is a few pixels wide.
           float cellPx = 1.0 / max(wj, 1e-6);
           float gridA = smoothstep(3.0, 9.0, cellPx);
           float gl = max(lineMask(fract(gi), wi * 0.7), lineMask(fract(gj), wj * 0.7));
-          c = mix(c, uInk, gl * gridA * 0.16 * onLand);   // Squares are only on land
+          c = mix(c, uInk, gl * gridA * 0.16 * onLand);
 
           vec2 cell = vec2(face * QN + floor(gj), floor(gi));
+
+          // Far away: the claims map, averaged to true size.
+          float near = smoothstep(1.5, 4.0, cellPx);
+          vec4 cl = texture2D(uClaims, mapUv);
+          if (cl.a > 0.0) c = mix(c, cl.rgb / cl.a, min(1.0, cl.a * 1.4) * (1.0 - near));
+
+          // Close up: the Square under this pixel, exactly.
+          if (near > 0.0) {
+            float idx = cell.x * QN + cell.y;
+            float tx = mod(idx, ${CELLS_W}.0), ty = floor(idx / ${CELLS_W}.0);
+            vec4 cd = texture2D(uCells, vec2((tx + 0.5) / ${CELLS_W}.0, (ty + 0.5) / ${CELLS_H}.0));
+            float a = floor(cd.a * 255.0 + 0.5);
+            float kind = floor(a / 16.0);
+            if (kind > 0.5) {
+              float extra = a - kind * 16.0;
+              vec2 uv = vec2(fract(gi), fract(gj));
+              // North in the cell's own axes, so shapes and images stand upright.
+              vec3 north = normalize(vec3(0.0, 1.0, 0.0) - p * p.y + 1e-5);
+              vec2 up = normalize(vec2(dot(north, r), dot(north, t)) + 1e-5);
+              vec2 qq = uv * 2.0 - 1.0;
+              vec2 q = vec2(dot(qq, vec2(up.y, -up.x)), dot(qq, up));
+              float sale = mod(floor(cd.b * 255.0 + 0.5), 2.0);
+              vec4 sq = square(kind, extra, cd.rgb, cd, uv, q, cellPx, kind > 5.5 && kind < 6.5 ? 0.0 : sale);
+              float clip = kind > 7.5 ? 1.0 : smoothstep(0.45, 0.55, land);   // the Capital is drawn whole
+              c = mix(c, sq.rgb, sq.a * clip * near);
+            }
+          }
+
           float edge = max(lineMask(fract(gi), wi * 1.6), lineMask(fract(gj), wj * 1.6));
-          if (cell == uHover) c = mix(c, uInk, max(0.08, edge * 0.9) * onLand);
-          if (cell == uSel) c = mix(c, mix(mix(c, uAccent, 0.18), uAccent, edge), onLand);
+          if (cell == uHover) c = mix(c, uInk, max(0.08, edge * 0.9) * max(onLand, 0.0));
+          if (cell == uSel) c = mix(c, mix(mix(c, uAccent, 0.18), uAccent, edge), 1.0);
 
           float lam = dot(normalize(vViewNormal), uLight) * 0.5 + 0.5;
           c *= mix(0.9, 1.0, lam);
@@ -289,181 +462,62 @@
   );
   scene.add(halo);
 
-  // Claimed Squares: one tile each, in the owner's color. Tiles never shrink
-  // below a few pixels, so they stay squares when you zoom out.
-  const tileUniforms = {
-    uLand: uniforms.uLand,
-    uMinWorld: { value: 0.01 },
-    uPxWorld: { value: 0.001 },
-    uHover: uniforms.uHover,
-    uSel: uniforms.uSel,
-    uInk: uniforms.uInk,
-    uAccent: uniforms.uAccent,
-  };
-  const quad = new THREE.PlaneGeometry(1, 1);
-  // three.js fixes an instanced geometry's instance limit the first time it draws,
-  // so every data change gets a fresh geometry.
-  function freshTileGeo() {
-    const g = new THREE.InstancedBufferGeometry();
-    g.index = quad.index;
-    g.setAttribute("position", quad.attributes.position);
-    g.setAttribute("uv", quad.attributes.uv);
-    return g;
+  // --- writing Squares into the textures
+  const promoSlots = new Map();   // url → slot
+  function promoSlot(url) {
+    if (promoSlots.has(url)) return promoSlots.get(url);
+    if (promoSlots.size >= 256) return -1;
+    const slot = promoSlots.size;
+    promoSlots.set(url, slot);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const ctx = promoCanvas.getContext("2d");
+      const x = (slot % 16) * 128, y = Math.floor(slot / 16) * 128;
+      const s = Math.min(img.width, img.height);   // cover-crop to a square
+      ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, x, y, 128, 128);
+      promoTex.needsUpdate = true;
+    };
+    img.src = url;
+    return slot;
   }
-  let tileGeo = freshTileGeo();
-  const tileMat = new THREE.ShaderMaterial({
-    uniforms: tileUniforms,
-    vertexShader: `
-      attribute vec3 aCenter, aR, aT, aColor;
-      attribute vec2 aSize, aCell;
-      attribute float aKind, aPosts, aAgent;
-      uniform float uMinWorld, uPxWorld;
-      varying vec2 vUv;
-      varying vec3 vColor;
-      varying float vKind, vPosts, vPx, vAgent, vClip;
-      varying vec2 vCell, vUp;
-      varying vec3 vPos;
-      void main() {
-        vAgent = aAgent;
-        // North, in the tile's own (right, up) axes, so civic shapes stand upright.
-        vec3 north = normalize(vec3(0.0, 1.0, 0.0) - aCenter * aCenter.y + 1e-6);
-        vUp = normalize(vec2(dot(north, aR), dot(north, aT)) + 1e-6);
-        vec2 s = max(aSize, vec2(uMinWorld));
-        vec3 pos = aCenter * 1.0009 + position.x * s.x * aR + position.y * s.y * aT;
-        vPos = pos;
-        // Zoomed in, a tile is its real Square and stops at the shore; zoomed out it's a marker.
-        vClip = step(uMinWorld, aSize.x) * step(aKind, 3.5);   // the Capital is drawn whole
-        vUv = uv; vColor = aColor; vKind = aKind; vPosts = aPosts; vCell = aCell;
-        vPx = s.x / uPxWorld;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-      }`,
-    fragmentShader: `
-      precision highp float;
-      uniform sampler2D uLand;
-      uniform vec2 uHover, uSel;
-      uniform vec3 uInk, uAccent;
-      varying vec2 vUv;
-      varying vec3 vColor;
-      varying float vKind, vPosts, vPx, vAgent, vClip;
-      varying vec2 vCell, vUp;
-      varying vec3 vPos;
-      // Signed distances for the Capital's shapes (after Inigo Quilez).
-      float sdPentagon(vec2 p, float r) {
-        const vec3 k = vec3(0.809016994, 0.587785252, 0.726542528);
-        p.x = abs(p.x);
-        p -= 2.0 * min(dot(vec2(-k.x, k.y), p), 0.0) * vec2(-k.x, k.y);
-        p -= 2.0 * min(dot(vec2(k.x, k.y), p), 0.0) * vec2(k.x, k.y);
-        p -= vec2(clamp(p.x, -r * k.z, r * k.z), r);
-        return length(p) * sign(p.y);
+  let written = [];
+  function setSquares(list) {
+    for (const i of written) cellData.fill(0, i * 4, i * 4 + 4);
+    written = [];
+    const cctx = claimsCanvas.getContext("2d");
+    cctx.clearRect(0, 0, claimsCanvas.width, claimsCanvas.height);
+    const CW = claimsCanvas.width, CH = claimsCanvas.height;
+    for (const s of list) {
+      const i = s.row * grid.N + s.col;
+      const col = new THREE.Color(s.color || "#9aa0aa");
+      let kind = s.civic ? KIND_ID[s.civic.shape] : s.kind ? KIND_ID[s.kind] : KIND_ID.untyped;
+      let extra = 0, rgb = [Math.round(col.r * 255), Math.round(col.g * 255), Math.round(col.b * 255)];
+      if (s.kind === "residential" && s.agent_name) extra = 1;
+      if (s.kind === "industrial") extra = Math.min(15, s.mines || 1);
+      if (s.kind === "social") extra = Math.min(9, s.posts || 0);
+      if (s.kind === "agricultural") extra = s.ripe ? 1 : 0;
+      if (s.kind === "promotional" && s.promo_url) {
+        const slot = promoSlot(s.promo_url);
+        if (slot >= 0) { kind = KIND_ID.promo_image; rgb = [slot & 255, slot >> 8, 0]; }
       }
-      float sdHexagon(vec2 p, float r) {
-        const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
-        p = abs(p.yx);
-        p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
-        p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
-        return length(p) * sign(p.y);
-      }
-      void main() {
-        if (vClip > 0.5) {
-          vec3 p = normalize(vPos);
-          float lat = degrees(asin(clamp(p.y, -1.0, 1.0)));
-          float lon = degrees(atan(-p.z, p.x));
-          if (texture2D(uLand, vec2((lon + 180.0) / 360.0, (lat + 90.0) / 180.0)).r < 0.5) discard;
-        }
-        vec3 base = vColor;
-        vec3 soft = mix(vColor, vec3(1.0), 0.62);
-        float detail = smoothstep(10.0, 22.0, vPx);   // patterns only when the tile is big enough to read
-        vec3 c = base;
-        if (vKind < 0.5 && vAgent > 0.5) {             // residential with an agent: its circle lives here
-          float d = length(vUv - 0.5);
-          float aa = 1.5 / max(vPx, 1.0);
-          c = mix(base, soft, 0.72);
-          c = mix(c, base, 1.0 - smoothstep(0.34 - aa, 0.34, d));
-          float ring = 1.0 - smoothstep(0.0, aa * 1.2, abs(d - 0.41));
-          c = mix(c, base, ring * detail);
-          vec2 e1 = vUv - vec2(0.43, 0.53), e2 = vUv - vec2(0.57, 0.53);
-          float eyes = max(1.0 - smoothstep(0.035 - aa, 0.035, length(e1 * vec2(1.0, 0.75))),
-                           1.0 - smoothstep(0.035 - aa, 0.035, length(e2 * vec2(1.0, 0.75))));
-          c = mix(c, vec3(1.0), eyes * detail);
-        } else if (vKind < 0.5) {                       // residential: solid, with an inner frame
-          float f = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
-          c = mix(base, soft, detail * (1.0 - smoothstep(0.17, 0.19, f)) * smoothstep(0.12, 0.14, f));
-        } else if (vKind < 1.5) {                       // industrial: more mines, more stripes
-          float s = step(0.5, fract((vUv.x + vUv.y) * (3.0 + vPosts)));
-          c = mix(base, mix(base, soft, s), detail);
-        } else if (vKind < 2.5) {                       // social: 3 × 3 post slots
-          vec2 g = vUv * 3.0;
-          float slot = floor(g.x) + 3.0 * floor(3.0 - g.y);
-          vec3 fill = slot < vPosts ? base : soft;
-          // Interior dividers only: lines at 1/3 and 2/3.
-          float gl = max(1.0 - smoothstep(0.0, 0.05, min(abs(g.x - 1.0), abs(g.x - 2.0))),
-                         1.0 - smoothstep(0.0, 0.05, min(abs(g.y - 1.0), abs(g.y - 2.0))));
-          c = mix(mix(base, soft, 0.35), mix(fill, vec3(1.0), gl * 0.9), detail);
-        } else if (vKind > 3.5) {                       // the Capital: ink tiles with a white shape
-          vec2 q = (vUv - 0.5) * 2.0;
-          q = vec2(dot(q, vec2(vUp.y, -vUp.x)), dot(q, vUp));   // x east, y north
-          float aa = 2.4 / max(vPx, 1.0);
-          float w = max(0.045, 1.2 / max(vPx, 1.0));
-          float d, dots = 0.0;
-          if (vKind < 4.5) {                            // Capital: the Ü of QÜBE
-            vec2 a = abs(q - vec2(0.0, -0.1));
-            d = abs(max(a.x, a.y) - 0.36) - w;
-            dots = max(1.0 - smoothstep(0.075 - aa, 0.075, length(q - vec2(-0.17, 0.52))),
-                       1.0 - smoothstep(0.075 - aa, 0.075, length(q - vec2(0.17, 0.52))));
-          } else if (vKind < 5.5) {
-            d = abs(sdPentagon(q, 0.46)) - w;
-          } else {
-            d = abs(sdHexagon(q, 0.52)) - w;
-          }
-          float shape = (1.0 - smoothstep(-aa * 0.5, aa * 0.5, d)) * smoothstep(6.0, 12.0, vPx);
-          c = mix(uInk, vec3(1.0), shape);
-          c = mix(c, uAccent, dots * smoothstep(6.0, 12.0, vPx));
-        } else {                                        // not typed yet
-          c = mix(base, soft, 0.5);
-        }
-        // Edges, measured in screen pixels so they stay crisp at any zoom.
-        float e = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y)) * vPx;
-        c = mix(c, mix(base, uInk, 0.35), 1.0 - smoothstep(0.6, 1.4, e));
-        if (vCell == uHover) c = mix(c, uInk, 1.0 - smoothstep(1.4, 2.4, e));
-        if (vCell == uSel) c = mix(c, uAccent, 1.0 - smoothstep(2.0, 3.2, e));
-        gl_FragColor = vec4(c, 1.0);
-      }`,
-  });
-  const tiles = new THREE.Mesh(tileGeo, tileMat);
-  tiles.frustumCulled = false;
-  scene.add(tiles);
-
-  const KIND_ID = { residential: 0, industrial: 1, social: 2, capital: 4, penta: 5, hexa: 6 };
-  function setTiles(list) {
-    const n = list.length;
-    tileGeo.dispose();
-    tileGeo = freshTileGeo();
-    tiles.geometry = tileGeo;
-    const A = (k) => new Float32Array(n * k);
-    const center = A(3), R = A(3), T = A(3), size = A(2), cell = A(2), col = A(3), kind = A(1), posts = A(1), agentF = A(1);
-    list.forEach((s, i) => {
-      const c = grid.dir(s.row, s.col);
-      const l = grid.dir(s.row, s.col, 0, 0.5), r = grid.dir(s.row, s.col, 1, 0.5);
-      const b = grid.dir(s.row, s.col, 0.5, 0), t = grid.dir(s.row, s.col, 0.5, 1);
-      const ru = [r[0] - l[0], r[1] - l[1], r[2] - l[2]], tv = [t[0] - b[0], t[1] - b[1], t[2] - b[2]];
-      const lu = Math.hypot(...ru), lv = Math.hypot(...tv);
-      center.set(c, i * 3);
-      R.set(ru.map((x) => x / lu), i * 3);
-      T.set(tv.map((x) => x / lv), i * 3);
-      size.set([lu, lv], i * 2);
-      cell.set([s.row, s.col], i * 2);
-      const cc = new THREE.Color(s.color || "#9aa0aa");
-      col.set([cc.r, cc.g, cc.b], i * 3);
-      kind[i] = s.kind in KIND_ID ? KIND_ID[s.kind] : 3;
-      posts[i] = s.kind === "industrial" ? s.mines || 1 : s.posts || 0;
-      agentF[i] = s.agent_name ? 1 : 0;
-    });
-    const set = (name, arr, k) => tileGeo.setAttribute(name, new THREE.InstancedBufferAttribute(arr, k));
-    set("aCenter", center, 3); set("aR", R, 3); set("aT", T, 3); set("aSize", size, 2);
-    set("aCell", cell, 2); set("aColor", col, 3); set("aKind", kind, 1); set("aPosts", posts, 1); set("aAgent", agentF, 1);
-    tileGeo.instanceCount = n;
+      rgb[2] = (rgb[2] & 0xfe) | (s.price != null ? 1 : 0);   // for sale
+      cellData.set([rgb[0], rgb[1], rgb[2], (kind << 4) | extra], i * 4);
+      written.push(i);
+      // the far-away map: the Square's own outline, in its color
+      const pts = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([u, v]) => {
+        const d = grid.dir(s.row, s.col, u, v);
+        const lat = Math.asin(Math.max(-1, Math.min(1, d[1]))) / DEG, lon = Math.atan2(-d[2], d[0]) / DEG;
+        return [((lon + 180) / 360) * CW, ((90 - lat) / 180) * CH];
+      });
+      const xs = pts.map((p) => p[0]);
+      if (Math.max(...xs) - Math.min(...xs) > CW / 2) continue;   // straddles the date line
+      cctx.fillStyle = s.civic ? "#111216" : s.color || "#9aa0aa";
+      cctx.beginPath(); pts.forEach(([x, y], k) => (k ? cctx.lineTo(x, y) : cctx.moveTo(x, y))); cctx.closePath(); cctx.fill();
+    }
+    cellTex.needsUpdate = true;
+    claimsTex.needsUpdate = true;
   }
-  setTiles([]);
 
   function toVec(lat, lon, r = 1) {
     const la = lat * DEG, lo = lon * DEG;
@@ -513,9 +567,6 @@
     camera.near = Math.max(0.0005, view.alt * 0.3);
     camera.far = d + 2;
     camera.updateProjectionMatrix();
-    const px = radPerPx();
-    tileUniforms.uPxWorld.value = px;
-    tileUniforms.uMinWorld.value = px * 7;   // tiles stay at least 7 px across
   }
   function resize() {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -537,21 +588,8 @@
     const p = o.clone().addScaledVector(d, t).normalize();
     return { lat: Math.asin(p.y) / DEG, lon: Math.atan2(-p.z, p.x) / DEG, ...grid.cellOfVec([p.x, p.y, p.z]) };
   }
-  // A claimed tile under the pointer wins, even when it's drawn bigger than its Square.
-  function pickTile(x, y) {
-    const h = pick(x, y);
-    if (!h) return null;
-    const exact = byCell.get(h.row + "." + h.col);
-    if (exact || cellPx() > 7) return h;
-    const p = toVec(h.lat, h.lon);
-    let best = null, bestD = radPerPx() * 6;
-    for (const s of allSquares) {
-      const c = grid.dir(s.row, s.col);
-      const dd = Math.hypot(c[0] - p.x, c[1] - p.y, c[2] - p.z);
-      if (dd < bestD) { bestD = dd; best = s; }
-    }
-    return best ? { ...grid.center(best.row, best.col), row: best.row, col: best.col } : h;
-  }
+  // Squares are drawn at their true size, so the cell under the pointer is the one you meant.
+  const pickTile = pick;
   const cellPx = () => (Math.PI / 2 / grid.N) / radPerPx();
 
   // ----------------------------------------------------------------- input
@@ -672,7 +710,7 @@
     $("claimed-count").textContent = `${fmt.format(owned.length)} claimed`;
     allSquares = [...owned, ...CIVIC_TILES];
     byCell = new Map(allSquares.map((s) => [s.row + "." + s.col, s]));
-    setTiles(allSquares);
+    setSquares(allSquares);
   }
 
   // ------------------------------------------------------------------ card
@@ -711,22 +749,32 @@
     const s = `<svg viewBox="0 0 34 34"><rect x="1" y="1" width="32" height="32" fill="${c}" stroke="#111216" stroke-opacity=".35"/>`;
     if (kind === "residential") return s + `<rect x="8" y="8" width="18" height="18" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2"/></svg>`;
     if (kind === "industrial") return s + `<path d="M1 11 11 1M1 21 21 1M1 31 31 1M11 33 33 11M21 33 33 21" stroke="#fff" stroke-opacity=".6" stroke-width="3"/></svg>`;
+    if (kind === "agricultural") return s + `<rect x="1" y="1" width="32" height="32" fill="#fff" fill-opacity=".75"/>${[8.5, 17, 25.5].map((y) => [8.5, 17, 25.5].map((x) => `<circle cx="${x}" cy="${y}" r="3.2" fill="${QUBE.BERRY}"/>`).join("")).join("")}</svg>`;
+    if (kind === "promotional") return s + `<rect x="7" y="10" width="20" height="14" fill="#fff" fill-opacity=".85"/><path d="M9 22l5-6 4 4 3-3 4 5z" fill="${c}"/></svg>`;
+    if (kind === "move_home") return `<svg viewBox="0 0 34 34"><rect x="1" y="1" width="32" height="32" fill="#fff" stroke="#111216" stroke-opacity=".35"/><circle cx="17" cy="17" r="9" fill="${c}"/><circle cx="14" cy="16" r="1.4" fill="#fff"/><circle cx="20" cy="16" r="1.4" fill="#fff"/></svg>`;
     return s + `<path d="M11.7 1v32M22.3 1v32M1 11.7h32M1 22.3h32" stroke="#fff" stroke-width="1.6"/></svg>`;
   }
+  const myAgentSquare = () => (me ? allSquares.find((s) => s.handle === me.handle && s.agent_name) : null);
+  const kindName = (k) => (k === "move_home" ? "Residence" : KINDS[k].label);
 
-  // The type picker used when placing or typing a Square.
-  function kindPicker(onPick) {
+  // The type picker used when placing or typing a Square. With `move`, it also offers
+  // to make this Square the agent's new home.
+  function kindPicker(onPick, { move } = {}) {
     const wrap = document.createElement("div");
     wrap.className = "kinds";
     wrap.setAttribute("role", "radiogroup");
     wrap.setAttribute("aria-label", "Square type");
-    let chosen = null;
-    for (const k of ["residential", "industrial", "social"]) {
+    const agent = move ? myAgentSquare() : null;
+    const options = ["residential", "industrial", "social", "agricultural", "promotional", ...(agent ? ["move_home"] : [])];
+    for (const k of options) {
       const b = document.createElement("button");
       b.type = "button"; b.className = "kind"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
-      b.innerHTML = kindIcon(k, (me && me.color) || "#3a3df5") + `<div><b>${KINDS[k].label}</b><span>${KINDS[k].blurb}</span></div>`;
+      const label = k === "move_home" ? `Move ${agent.agent_name}'s residence here` : KINDS[k].label;
+      const blurb = k === "move_home" ? `This becomes ${agent.agent_name}'s home. Your current home stays yours and gets a new type.` : KINDS[k].blurb;
+      b.innerHTML = kindIcon(k, (me && me.color) || "#3a3df5") + `<div><b></b><span></span></div>`;
+      b.querySelector("b").textContent = label;
+      b.querySelector("span").textContent = blurb;
       b.addEventListener("click", () => {
-        chosen = k;
         wrap.querySelectorAll(".kind").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
         onPick(k);
       });
@@ -751,22 +799,42 @@
     }
     const mine = allSquares.filter((s) => s.handle === me.handle);
     const untyped = mine.filter((s) => !s.kind);
+    const ripe = mine.filter((s) => s.ripe);
     const avail = available();
     const buttons = [];
     if (untyped.length) buttons.push(button("Choose a type", () => focusSquare(untyped[0])));
+    else if (ripe.length) buttons.push(button(`Harvest · ${ripe.length} field${ripe.length === 1 ? "" : "s"} ripe`, () => focusSquare(ripe[0])));
     else if (mine.length) buttons.push(button("Fly to my Squares", () => focusSquare(mine[0]), avail > 0));
     buttons.push(button("Market", null, true, "/hexa"));
     buttons.push(button("Visit the Capital", focusCapital, true));
+    const count = (k) => mine.filter((s) => s.kind === k).length;
     setCard({
       eyebrow: "@" + me.handle,
       title: avail > 0 ? `${avail} Square${avail === 1 ? "" : "s"} to place` : `You own ${mine.length} Square${mine.length === 1 ? "" : "s"}`,
-      sub: untyped.length ? "One of your Squares needs a type: Residential, Industrial or Social."
+      sub: untyped.length ? "One of your Squares needs a type."
+        : ripe.length ? "Your Tokenberries are ripe. Click a field to harvest it."
         : avail > 0 ? "Zoom in and click any open Square to place it. Placing is permanent."
         : `${fmt.format(Number(me.balance))} points in your wallet.`,
-      status: `${me.residential} residential · ${me.industrial} industrial · ${me.social} social`,
+      status: ["residential", "industrial", "social", "agricultural", "promotional"].filter((k) => count(k)).map((k) => `${count(k)} ${k}`).join(" · ") || "No Squares placed yet",
       swatch: me.color,
       buttons,
     });
+  }
+
+  // Spending is two taps: the first arms the button, the second acts.
+  function twoStep(btn, label, confirmLabel, run) {
+    let armed = false, timer;
+    btn.textContent = label;
+    btn.addEventListener("click", async () => {
+      if (!armed) {
+        armed = true; btn.textContent = confirmLabel;
+        timer = setTimeout(() => { armed = false; btn.textContent = label; }, 4000);
+        return;
+      }
+      clearTimeout(timer); armed = false; btn.disabled = true;
+      await run();
+    });
+    return btn;
   }
 
   async function select(row, col) {
@@ -776,11 +844,15 @@
     const owner = byCell.get(row + "." + col);
     if (owner && owner.civic) {
       const c = owner.civic;
-      const go = (k) => QUBE.CIVIC.find((x) => x.key === k);
-      const enter = c.href
-        ? [button(`Enter the ${c.name}`, null, false, c.href)]
-        : [button(`Penta`, null, false, go("penta").href), button(`Hexa`, null, false, go("hexa").href)];
-      return setCard({ eyebrow: c.role, title: c.name, sub: `${grid.label(row, col)} · ${grid.coords(row, col)}`, status: c.blurb, swatch: "#111216", buttons: [...enter, button("Close", idleCard, true)] });
+      const buttons = [];
+      if (c.key === "capital") {
+        for (const k of ["penta", "hexa", "bank", "line", "customs", "arcade"]) {
+          const b = QUBE.CIVIC.find((x) => x.key === k);
+          buttons.push(button(b.tag, null, k !== "penta" && k !== "hexa", b.href));
+        }
+      } else if (c.href) buttons.push(button(c.key === "bank" ? "Open the Central Bank" : `Enter ${c.name}`, null, false, c.href));
+      buttons.push(button("Close", idleCard, true));
+      return setCard({ eyebrow: c.role, title: c.tag, sub: `${grid.label(row, col)} · ${grid.coords(row, col)}`, status: c.blurb, swatch: "#111216", buttons });
     }
     const base = { eyebrow: owner && owner.kind ? KINDS[owner.kind].label + " Square" : "Square", title: grid.label(row, col), sub: `${grid.coords(row, col)} · about 10 × 10 mi` };
     const close = button("Close", idleCard, true);
@@ -798,10 +870,67 @@
         confirm.disabled = true;
         return setCard({ ...base, status: "Yours · choose what this Square is. You can't change it later.", swatch: owner.color, body: kindPicker((k) => { kind = k; confirm.disabled = false; confirm.textContent = `Make it ${KINDS[k].label}`; }), buttons: [confirm, close] });
       }
+
+      const btns = [];
+      let body = null, extra = "";
+      const mines = owner.mines || 1;
+      if (owner.kind === "industrial") extra = ` · ${mines} mine${mines === 1 ? "" : "s"}, ${mines * QUBE.MINE_RATE} points a day`;
+      if (owner.kind === "residential") extra = owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet";
+      if (owner.kind === "agricultural") extra = owner.ripe ? " · 9 tokenberries ripe" : " · harvested today, ripe again at midnight UTC";
+      if (owner.kind === "promotional") extra = owner.promo_url ? "" : " · no image yet";
+      if (owner.price != null) extra += ` · for sale, ${fmt.format(Number(owner.price))} pts`;
+
+      if (isMine && owner.kind === "agricultural" && owner.ripe) {
+        btns.push(button("Harvest 9 tokenberries", async (e) => {
+          e.currentTarget.disabled = true;
+          try {
+            const total = await api.harvest(row, col);
+            await loadData();
+            toast(`+9 tokenberries · you have ${fmt.format(Number(total))}`);
+            select(row, col);
+          } catch (err) { $("card-err").textContent = err.message; }
+        }));
+      }
+      if (owner.kind === "promotional" && owner.promo_url) {
+        body = document.createElement("img");
+        body.className = "promo"; body.src = owner.promo_url; body.alt = `@${owner.handle}'s promotion`;
+      }
+      if (isMine && owner.kind === "promotional") {
+        const input = document.createElement("input");
+        input.type = "file"; input.accept = "image/*"; input.hidden = true;
+        input.addEventListener("change", async () => {
+          const file = input.files[0]; if (!file) return;
+          const b = $("card-btns").firstChild; b.disabled = true; b.textContent = "Uploading…";
+          try { await api.setSquareImage(row, col, await QUBE.prepareMedia(file)); await loadData(); toast("Your image is up on the Sfere"); select(row, col); }
+          catch (err) { $("card-err").textContent = err.message; b.disabled = false; b.textContent = "Choose an image"; }
+        });
+        document.body.append(input);
+        btns.push(button(owner.promo_url ? "Change image" : "Choose an image", () => input.click()));
+      }
       if (owner.kind === "social") {
-        const body = document.createElement("div");
+        body = document.createElement("div");
         body.className = "slots";
-        setCard({ ...base, status: `${who} · ${owner.posts} of 9 posts`, swatch: owner.color, body, buttons: [close] });
+      }
+      if (isMine && owner.kind === "industrial" && mines < 9) btns.push(button("Add a mine", null, false, `/hexa#mine-${row}.${col}`));
+      if (isMine && owner.kind === "residential") btns.push(button(owner.agent_name ? `Visit ${owner.agent_name}` : "Wake your agent", null, false, "/cirqle"));
+      if (isMine && owner.price == null && !owner.agent_name) btns.push(button("Sell", null, true, `/hexa#sell-${row}.${col}`));
+      if (isMine && owner.price != null) btns.push(button("Your listing", null, true, "/hexa#secondary"));
+      if (!isMine && owner.price != null) {
+        if (!me) btns.push(button("Sign in to buy", null, false, "/points"));
+        else {
+          const cost = Number(owner.price);
+          const buy = button("", null);
+          if (Number(me.balance) < cost) { buy.textContent = `Need ${fmt.format(cost - Number(me.balance))} more points`; buy.disabled = true; }
+          else twoStep(buy, `Buy for ${fmt.format(cost)} pts`, `Confirm · ${fmt.format(cost)} pts`, async () => {
+            try { await api.buyListing(owner.listing_id); await loadData(); QUBE.setNavUser(me); toast("It's yours. Welcome to your new Square."); select(row, col); }
+            catch (err) { $("card-err").textContent = err.message; buy.disabled = false; }
+          });
+          btns.push(buy);
+        }
+      }
+      btns.push(close);
+      setCard({ ...base, status: who + extra, swatch: owner.color, body, buttons: btns });
+      if (owner.kind === "social") {
         const posts = await api.squarePosts(row, col).catch(() => []);
         for (let i = 0; i < 9; i++) {
           const p = posts[i];
@@ -816,14 +945,8 @@
           }
           body.append(a);
         }
-        return;
       }
-      const mines = owner.mines || 1;
-      const extra = owner.kind === "industrial" ? ` · ${mines} mine${mines === 1 ? "" : "s"}, ${mines * QUBE.MINE_RATE} points a day` : owner.kind === "residential" ? (owner.agent_name ? ` · home of ${owner.agent_name}` : " · no agent yet") : "";
-      const btns = [close];
-      if (isMine && owner.kind === "industrial" && mines < 9) btns.unshift(button("Add a mine", null, false, `/hexa#mine-${row}.${col}`));
-      if (isMine && owner.kind === "residential") btns.unshift(button(owner.agent_name ? `Visit ${owner.agent_name}` : "Wake your agent", null, false, "/cirqle"));
-      return setCard({ ...base, status: who + extra, swatch: owner.color, buttons: btns });
+      return;
     }
 
     if (!isLand(row, col)) return setCard({ ...base, eyebrow: "Ocean", sub: grid.coords(row, col), status: "Water · Squares are only on land", swatch: "open", buttons: [close] });
@@ -835,14 +958,17 @@
     let kind = null;
     const place = button("Place Square", () => confirmPlace(row, col, kind));
     place.disabled = true;
-    setCard({ ...base, status: "Open · choose a type to place it", swatch: "open", body: kindPicker((k) => { kind = k; place.disabled = false; place.textContent = `Place ${KINDS[k].label}`; }), buttons: [place, close] });
+    setCard({ ...base, status: "Open · choose a type to place it", swatch: "open", body: kindPicker((k) => { kind = k; place.disabled = false; place.textContent = k === "move_home" ? "Move residence here" : `Place ${KINDS[k].label}`; }, { move: true }), buttons: [place, close] });
   }
 
   function confirmPlace(row, col, kind) {
+    const agent = myAgentSquare();
     setCard({
       eyebrow: "Confirm", title: grid.label(row, col),
-      sub: `${grid.coords(row, col)}. A ${KINDS[kind].label} Square, for good. Placing and type are permanent.`,
-      status: KINDS[kind].blurb, swatch: me.color,
+      sub: kind === "move_home"
+        ? `${grid.coords(row, col)}. ${agent.agent_name} moves here for good. Your old home at ${grid.label(agent.row, agent.col)} stays yours and waits for a new type.`
+        : `${grid.coords(row, col)}. A ${KINDS[kind].label} Square, for good. Placing and type are permanent.`,
+      status: kind === "move_home" ? "A new Residential Square, and a new home" : KINDS[kind].blurb, swatch: me.color,
       buttons: [button("Yes, place it", () => place(row, col, kind)), button("Back", () => select(row, col), true)],
     });
   }
@@ -852,9 +978,15 @@
     btns.forEach((b) => (b.disabled = true));
     btns[0].textContent = "Placing…";
     try {
+      const mover = kind === "move_home" ? myAgentSquare() : null;
       await api.claimSquare(row, col, kind);
       await loadData();
-      toast(kind === "social" ? "Social Square placed. You have 9 more posts." : kind === "industrial" ? `Mine placed. It pays ${QUBE.MINE_RATE} points a day.` : "Home placed.");
+      toast(mover ? `${mover.agent_name} moved in. Choose a new type for the old home.`
+        : kind === "social" ? "Social Square placed. You have 9 more posts."
+        : kind === "industrial" ? `Mine placed. It pays ${QUBE.MINE_RATE} points a day.`
+        : kind === "agricultural" ? "Field planted. Harvest 9 tokenberries a day."
+        : kind === "promotional" ? "Billboard up. Choose its image."
+        : "Home placed.");
       select(row, col);
     } catch (err) {
       $("card-err").textContent = err.message;
@@ -868,20 +1000,39 @@
     flyTo(c.lat, c.lon, 0.035, () => select(capital.row, capital.col));
   }
   $("capital").addEventListener("click", focusCapital);
-  // The Capital's label rides along with the globe while its side faces you.
+  // The Capital's label rides along with the globe while its side faces you; up close,
+  // each building gets its own small tag.
   const capVec = (() => { const d = grid.dir(capital.row, capital.col); return new THREE.Vector3(d[0], d[1], d[2]); })();
   const capProj = new THREE.Vector3();
+  const tags = QUBE.CIVIC.filter((c) => c.shape !== "plaza").map((c) => {
+    const el = document.createElement("button");
+    el.type = "button"; el.className = "ctag"; el.textContent = c.tag; el.tabIndex = -1;
+    el.addEventListener("click", () => select(c.row, c.col));
+    document.body.append(el);
+    const d = grid.dir(c.row, c.col);
+    return { el, v: new THREE.Vector3(d[0], d[1], d[2]) };
+  });
   function placeCapitalLabel() {
     const el = $("capital");
     const facing = capVec.dot(camera.position.clone().normalize());
-    const show = facing > 0.25 && !(selected && byCell.get(selected.row + "." + selected.col)?.civic);
+    const px = cellPx();
+    const close = px > 70 && facing > 0.25;
+    const show = facing > 0.25 && !close && !(selected && byCell.get(selected.row + "." + selected.col)?.civic);
     el.classList.toggle("on", show);
     el.tabIndex = show ? 0 : -1;
-    if (!show) return;
-    capProj.copy(capVec).multiplyScalar(1.001).project(camera);
-    const x = (capProj.x * 0.5 + 0.5) * window.innerWidth, y = (-capProj.y * 0.5 + 0.5) * window.innerHeight;
-    const half = Math.max(7, cellPx()) / 2;
-    el.style.transform = `translate(${Math.round(x + half + 4)}px, ${Math.round(y - 12)}px)`;
+    if (show) {
+      capProj.copy(capVec).multiplyScalar(1.001).project(camera);
+      const x = (capProj.x * 0.5 + 0.5) * window.innerWidth, y = (-capProj.y * 0.5 + 0.5) * window.innerHeight;
+      el.style.transform = `translate(${Math.round(x + Math.max(7, px) * 1.6 + 4)}px, ${Math.round(y - 12)}px)`;
+    }
+    for (const t of tags) {
+      t.el.classList.toggle("on", close);
+      if (!close) continue;
+      capProj.copy(t.v).multiplyScalar(1.001).project(camera);
+      const x = (capProj.x * 0.5 + 0.5) * window.innerWidth, y = (-capProj.y * 0.5 + 0.5) * window.innerHeight;
+      // under the building's shape, inside its Square
+      t.el.style.transform = `translate(-50%, -50%) translate(${Math.round(x)}px, ${Math.round(y + px * 0.34)}px)`;
+    }
   }
 
   function focusSquare(s) {
