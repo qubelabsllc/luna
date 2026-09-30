@@ -425,9 +425,11 @@
             if (kind > 0.5) {
               float extra = a - kind * 16.0;
               vec2 uv = vec2(fract(gi), fract(gj));
-              // North in the cell's own axes, so shapes and images stand upright.
+              // Patterns follow the Square's own edges: of its four sides, the one facing
+              // most nearly north is "up", so grids line up with the cell and shapes stay upright.
               vec3 north = normalize(vec3(0.0, 1.0, 0.0) - p * p.y + 1e-5);
-              vec2 up = normalize(vec2(dot(north, r), dot(north, t)) + 1e-5);
+              vec2 nn = vec2(dot(north, r), dot(north, t));
+              vec2 up = abs(nn.x) > abs(nn.y) ? vec2(sign(nn.x), 0.0) : vec2(0.0, sign(nn.y));
               vec2 qq = uv * 2.0 - 1.0;
               vec2 q = vec2(dot(qq, vec2(up.y, -up.x)), dot(qq, up));
               float sale = mod(floor(cd.b * 255.0 + 0.5), 2.0);
@@ -559,10 +561,30 @@
   let vel = { lat: 0, lon: 0 }, flight = null, lastInteract = 0;
   const radPerPx = () => (2 * view.alt * Math.tan((camera.fov * DEG) / 2)) / window.innerHeight;
 
+  // Far out, north is up. Zoomed in, the map turns (at most 45°) so the grid under you
+  // runs straight up and across the screen.
+  let roll = 0;   // angle of the screen's up from north, toward east
+  function gridRoll() {
+    const la = view.lat * DEG, lo = view.lon * DEG;
+    const p = [Math.cos(la) * Math.cos(lo), Math.sin(la), -Math.cos(la) * Math.sin(lo)];
+    const north = [-Math.sin(la) * Math.cos(lo), Math.cos(la), Math.sin(la) * Math.sin(lo)];
+    const east = [-Math.sin(lo), 0, -Math.cos(lo)];
+    const F = grid.FACES[Math.floor(grid.cellOfVec(p).row / grid.N)];
+    // Each grid axis as an angle from north toward east.
+    const ang = (v) => Math.atan2(v[0] * east[0] + v[1] * east[1] + v[2] * east[2], v[0] * north[0] + v[1] * north[1] + v[2] * north[2]);
+    const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    const axes = [F.r, F.t, F.r.map((x) => -x), F.t.map((x) => -x)].map(ang);
+    // "Up" is the axis nearest north; "right" is the one nearest east (90° on).
+    const up = axes.reduce((b, a) => (Math.abs(wrap(a)) < Math.abs(wrap(b)) ? a : b));
+    const right = axes.reduce((b, a) => (Math.abs(wrap(a - Math.PI / 2)) < Math.abs(wrap(b - Math.PI / 2)) ? a : b));
+    // Where Squares are skewed, split the lean between the two directions so neither lies far from straight.
+    return wrap(up) / 2 + wrap(right - Math.PI / 2) / 2;
+  }
   function applyCamera() {
     const d = 1 + view.alt;
     camera.position.copy(toVec(view.lat, view.lon, d));
-    camera.up.set(0, 1, 0);
+    const la = view.lat * DEG, lo = view.lon * DEG, c = Math.cos(roll), s = Math.sin(roll);
+    camera.up.set(-Math.sin(la) * Math.cos(lo) * c - Math.sin(lo) * s, Math.cos(la) * c, Math.sin(la) * Math.sin(lo) * c - Math.cos(lo) * s);
     camera.lookAt(0, 0, 0);
     camera.near = Math.max(0.0005, view.alt * 0.3);
     camera.far = d + 2;
@@ -621,8 +643,10 @@
       drag.x = e.clientX; drag.y = e.clientY;
       if (drag.moved > 4) canvas.classList.add("dragging");
       const k = radPerPx() / DEG;
-      const dLon = (-dx * k) / Math.max(0.2, Math.cos(view.lat * DEG));
-      const dLat = dy * k;
+      // The screen may be turned (roll): turn the drag back into east and north.
+      const cr = Math.cos(roll), sr = Math.sin(roll);
+      const dLon = ((-dx * cr + dy * sr) * k) / Math.max(0.2, Math.cos(view.lat * DEG));
+      const dLat = (dx * sr + dy * cr) * k;
       view.lon = wrapLon(view.lon + dLon);
       view.lat = clampLat(view.lat + dLat);
       vel = { lat: dLat, lon: dLon };
@@ -1059,6 +1083,10 @@
       vel.lat *= 0.92; vel.lon *= 0.92;
       if (!reduce && now - lastInteract > 4000 && view.alt > 1 && !selected) view.lon = wrapLon(view.lon + dt * 3);
     }
+    // Ease the turn toward the grid as you zoom in, back to north as you zoom out.
+    const straighten = 1 - Math.min(1, Math.max(0, (view.alt - 0.12) / (0.6 - 0.12)));
+    const target = straighten > 0 ? gridRoll() * straighten * straighten * (3 - 2 * straighten) : 0;
+    roll += (target - roll) * Math.min(1, dt * 6);
     applyCamera();
     renderer.render(scene, camera);
     placeCapitalLabel();
