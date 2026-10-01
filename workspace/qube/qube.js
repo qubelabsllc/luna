@@ -61,6 +61,17 @@
       return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
     },
     hash: (row, col) => `${row}.${col}`,
+    // A Square's address on the web: /sfere/5-083-553 (face · x · y, as in its label).
+    addr(row, col) {
+      const p = (n) => String(n).padStart(3, "0");
+      return `${Math.floor(row / N) + 1}-${p(col)}-${p(row % N)}`;
+    },
+    parseAddr(text) {
+      const m = /(\d)\s*[-·.\s]\s*(\d{1,3})\s*[-·.\s]\s*(\d{1,3})/.exec(text || "");
+      if (!m) return null;
+      const face = +m[1] - 1, col = +m[2], y = +m[3];
+      return face >= 0 && face < 6 && col < N && y < N ? { row: face * N + y, col } : null;
+    },
     parseHash(h) {
       const m = /^#?(\d{1,4})\.(\d{1,3})$/.exec(h || "");
       if (!m) return null;
@@ -215,6 +226,15 @@
       listBerries: (quantity, unitPrice) => rpc("list_berries", { p_quantity: quantity, p_unit_price: unitPrice }),
       cancelListing: (id) => rpc("cancel_listing", { p_id: id }),
       buyListing: (id, quantity) => rpc("buy_listing", { p_id: id, p_quantity: quantity ?? null }),
+      spaceView: (row, col) => rpc("space_view", { p_row: row, p_col: col }),
+      spaceSaveDraft: (row, col, slug, name, layout) => rpc("space_save_draft", { p_row: row, p_col: col, p_slug: slug, p_name: name, p_layout: layout }),
+      spacePublishCost: (row, col, slug) => rpc("space_publish_cost", { p_row: row, p_col: col, p_slug: slug }),
+      spacePublish: (row, col, slug) => rpc("space_publish", { p_row: row, p_col: col, p_slug: slug }),
+      spaceDeleteRoom: (row, col, slug) => rpc("space_delete_room", { p_row: row, p_col: col, p_slug: slug }),
+      spaceSetTitle: (row, col, title) => rpc("space_set_title", { p_row: row, p_col: col, p_title: title }),
+      spaceSign: (row, col, body) => rpc("space_sign_guestbook", { p_row: row, p_col: col, p_body: body }),
+      spaceTip: (row, col, amount) => rpc("space_tip", { p_row: row, p_col: col, p_amount: amount }),
+      spacesBuilt: () => rpc("spaces_built"),
       myAgent: async () => (await rpc("my_agent"))[0] || null,
       createAgent: (name) => rpc("create_agent", { p_name: name }),
       async agentMessages(agentId, before) {
@@ -248,7 +268,7 @@
   // Without Supabase settings the site can't sign anyone in; pages still render.
   function offlineApi() {
     const off = async () => { throw new Error("QÜBE isn't connected to its database yet."); };
-    return new Proxy({ live: false, hasSession: async () => false, sfereSquares: async () => [], feed: async () => [], pointsStats: async () => null, marketOpen: async () => [], marketStats: async () => null, ecosystemStats: async () => null, logVisit: async () => {} },
+    return new Proxy({ live: false, hasSession: async () => false, sfereSquares: async () => [], feed: async () => [], pointsStats: async () => null, marketOpen: async () => [], marketStats: async () => null, spaceView: async () => null, spacesBuilt: async () => [], ecosystemStats: async () => null, logVisit: async () => {} },
       { get: (t, k) => (k in t ? t[k] : off) });
   }
 

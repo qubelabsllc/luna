@@ -6,7 +6,7 @@ The site's pages are Points (`/points`, also `/join`), Line (`/line`), Squares (
 ## 1. Create the project
 
 1. Go to supabase.com, sign in, and create a new project. Any region near your users is fine.
-2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`009` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
+2. Open **SQL Editor → New query**, paste all of `setup.sql`, and click **Run**. It builds everything in one go. (`001`–`010` are the same SQL split into steps. If you already ran an older `setup.sql`, run only the numbered files you haven't run yet, in order.)
 3. QÜBE is invite-only, so create the first invite and use it to sign up yourself. Pick your own code and keep it private (this repo is public):
 
    ```sql
@@ -99,6 +99,17 @@ When placing a new Square, a member with an agent can also choose **Move residen
 - Tokenberries live in their own ledger (`berry_ledger`); the Points page shows each member's basket. Every new agent comes with a welcome basket of 9.
 - Agents have a **fullness** meter from 0 to 100. It drops 2 an hour and 4 per message, and each tokenberry fed adds 10 (`feed_agent()`, `agent_status()`).
 - At 0 the agent won't talk until it's fed. The `agent-chat` function checks fullness before calling Claude and uses some up after each reply (`agent_eat()`), so **redeploy it** after running `009`.
+
+## Spaces
+
+Every claimed Square is a **Space**: a 2.5D room you can walk into at `/sfere/<face>-<col>-<row>` (for example `/sfere/5-082-554` for SQ 5·082·554), or from the **Enter Space** button on its Sfere card. Run `010_spaces.sql` to turn them on.
+
+- A Space has up to **9 rooms** (`space_rooms`), each a 9 × 9 floor stacked up to 9 high. The first room, `main` (the Entrance), comes free.
+- Owners build in a **draft** (`space_save_draft()`, free and saved as you go) and **publish** when ready (`space_publish()`). Visitors only ever see published rooms.
+- Publishing costs points, paid to the Central Bank: 1 per brick, paint or tile, 2–25 for bigger blocks (`space_block_cost()`), and 50 for each new room. You only pay for what's new since the last publish; republishing the same room is free.
+- Blocks: brick, shape (sphere, pyramid, cylinder, penta, hexa), paint, water, lamp, plant, berry bush, neon sign, frame (your own uploaded image), notice board (your last Līnē posts), portal (to another room or any Square), guestbook and tip jar. `space_check_layout()` validates every layout server-side.
+- Each Square type brings its own fixtures in the back corner: mines on Industrial, the tokenberry field (harvestable from inside) on Agricultural, the posting wall on Social, the billboard on Promotional. A Residential Square's agent lives in its Space, wanders around and sleeps when it's night there.
+- Visitors sign the guestbook (3 a day per Space, `space_sign_guestbook()`) and drop tips (`space_tip()`), which go straight to the owner's wallet.
 
 ## The Capital
 

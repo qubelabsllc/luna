@@ -29,6 +29,14 @@
       "destination": "/workspace/qube/sfere.html"
     },
     {
+      "source": "/sfere/:addr",
+      "destination": "/workspace/qube/space.html"
+    },
+    {
+      "source": "/sfere/:addr/:room",
+      "destination": "/workspace/qube/space.html"
+    },
+    {
       "source": "/cirqle",
       "destination": "/workspace/qube/cirqle.html"
     },
