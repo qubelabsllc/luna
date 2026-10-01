@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Space · QÜBE</title>
+<meta name="description" content="A Space on the Sfere: the place inside a QÜBE Square, built by its owner and their agent.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;300;500&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/qube.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff; --ink: #111216; --muted: #6b6f78; --faint: #f5f6f8; --line: #e4e6ea; --accent: #3a3df5; --berry: #e33a6d;
+    --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --gutter: clamp(16px, 4vw, 48px);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--faint); color: var(--ink); font: 400 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; overflow: hidden; }
+  a { color: inherit; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+  .mono { font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #world.dragging { cursor: grabbing; }
+  #world.pointing { cursor: pointer; }
+  #world.placing { cursor: crosshair; }
+  body.night .ui { --panel: rgba(24, 25, 44, 0.86); --panel-ink: #f2f2fa; --panel-muted: #a3a6c2; --panel-line: rgba(255, 255, 255, 0.12); }
+  .ui { --panel: rgba(255, 255, 255, 0.9); --panel-ink: var(--ink); --panel-muted: var(--muted); --panel-line: var(--line); }
+
+  .head { position: fixed; z-index: 2; left: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px)); max-width: min(420px, 60vw); pointer-events: none; color: var(--panel-ink); }
+  .head .mono { color: var(--panel-muted); }
+  .head h1 { margin: 8px 0 0; font: 200 clamp(28px, 4vw, 46px)/1.05 var(--display); overflow-wrap: anywhere; }
+  .head p { margin: 8px 0 0; color: var(--panel-muted); font-size: 14px; }
+  .head a { pointer-events: auto; text-decoration: none; }
+  .head a:hover { color: var(--accent); }
+
+  .rooms { position: fixed; z-index: 3; right: var(--gutter); top: calc(84px + env(safe-area-inset-top, 0px)); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 46vw; }
+  .rooms button { border: 0; cursor: pointer; padding: 7px 12px; border-radius: 999px; background: var(--panel); color: var(--panel-ink); box-shadow: inset 0 0 0 1px var(--panel-line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font: 400 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .rooms button[aria-current="true"] { background: var(--ink); color: #fff; box-shadow: none; }
+  body.night .rooms button[aria-current="true"] { background: #fff; color: var(--ink); }
+  .rooms button.add { color: var(--accent); }
+
+  .tools { position: fixed; z-index: 3; right: var(--gutter); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; }
+  .iconbtn { width: 42px; height: 42px; border-radius: 999px; border: 0; cursor: pointer; background: var(--panel); color: var(--panel-ink); box-shadow: inset 0 0 0 1px var(--panel-line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: grid; place-items: center; font-size: 17px; }
+  .iconbtn:hover { box-shadow: inset 0 0 0 1px var(--accent); }
+  .pill { height: 42px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer; background: var(--ink); color: #fff; font: 500 14px/1 var(--body); }
+  .pill:hover:not(:disabled) { background: var(--accent); }
+  .pill:disabled { opacity: 0.4; cursor: default; }
+  .pill.ghost { background: var(--panel); color: var(--panel-ink); box-shadow: inset 0 0 0 1px var(--panel-line); backdrop-filter: blur(10px); }
+  .pill.sure { background: var(--accent); }
+
+  .card { position: fixed; z-index: 4; left: var(--gutter); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: min(380px, calc(100vw - 2 * var(--gutter))); max-height: calc(100svh - 220px); overflow-y: auto; background: var(--panel); color: var(--panel-ink); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--panel-line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .card h2 { margin: 0; font: 300 21px/1.15 var(--display); overflow-wrap: anywhere; }
+  .card .sub { color: var(--panel-muted); font-size: 14px; }
+  .card .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card .err { color: #e5484d; font-size: 14px; }
+  .card .err:empty { display: none; }
+  .card img.full { width: 100%; border-radius: 6px; display: block; }
+  .card textarea, .card input[type=text], .card input[type=number] { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--panel-line); background: transparent; color: var(--panel-ink); resize: vertical; }
+  .gb { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+  .gb li { font-size: 14px; }
+  .gb b { font-weight: 600; }
+  .gb .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+  .posts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .posts a { display: block; padding: 10px 12px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--panel-line); text-decoration: none; font-size: 14px; }
+
+  /* the builder */
+  .build { position: fixed; z-index: 5; left: 0; right: 0; bottom: 0; padding: 10px var(--gutter) calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--panel); color: var(--panel-ink); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--panel-line); display: flex; flex-direction: column; gap: 10px; }
+  .build-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .build-top input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--panel-line); background: transparent; color: var(--panel-ink); width: 160px; }
+  .build-top .grow { flex: 1; }
+  .build-top .saved { font: 400 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--panel-muted); }
+  .seg { display: inline-flex; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--panel-line); padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: none; cursor: pointer; padding: 7px 12px; border-radius: 999px; font: 400 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--panel-muted); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  body.night .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); }
+  .palette { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .palette .cat { font: 400 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--panel-muted); writing-mode: vertical-rl; transform: rotate(180deg); padding: 4px 2px; flex: none; }
+  .item { flex: none; width: 74px; border: 0; cursor: pointer; background: transparent; border-radius: 10px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: inset 0 0 0 1px var(--panel-line); color: var(--panel-ink); }
+  .item:hover { box-shadow: inset 0 0 0 1px var(--panel-muted); }
+  .item[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+  .item canvas { width: 48px; height: 44px; }
+  .item b { font: 500 12px/1 var(--body); }
+  .item small { font: 400 10px/1 var(--mono); color: var(--panel-muted); }
+  .swatches { display: flex; gap: 5px; flex-wrap: wrap; }
+  .swatches button { width: 22px; height: 22px; border-radius: 6px; border: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+  .swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
+  .toast { position: fixed; z-index: 40; left: 50%; top: calc(80px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .empty-note { position: fixed; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--panel-muted); pointer-events: none; }
+
+  body.building .card { bottom: calc(196px + env(safe-area-inset-bottom, 0px)); }
+  body.building .tools { bottom: calc(196px + env(safe-area-inset-bottom, 0px)); }
+  @media (max-width: 760px) {
+    .head { top: calc(70px + env(safe-area-inset-top, 0px)); max-width: 62vw; }
+    .head p { display: none; }
+    .rooms { top: calc(70px + env(safe-area-inset-top, 0px)); }
+    .tools { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+    .card { bottom: calc(140px + env(safe-area-inset-bottom, 0px)); max-height: 46svh; }
+    body.building .card { bottom: calc(230px + env(safe-area-inset-bottom, 0px)); }
+    body.building .tools { bottom: calc(230px + env(safe-area-inset-bottom, 0px)); }
+    .build { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+    .build-top input { width: 120px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="world" aria-label="A Space: an isometric room built on a Square of the Sfere. Drag to look around, click things to use them."></canvas>
+
+<div class="ui">
+  <div class="head">
+    <div class="mono" id="eyebrow">Space</div>
+    <h1 id="title">Loading…</h1>
+    <p id="sub"></p>
+  </div>
+  <nav class="rooms" id="rooms" aria-label="Rooms"></nav>
+  <div class="empty-note mono" id="empty" hidden></div>
+
+  <div class="tools">
+    <button class="iconbtn" id="rot-l" type="button" aria-label="Turn left" title="Turn left">↺</button>
+    <button class="iconbtn" id="rot-r" type="button" aria-label="Turn right" title="Turn right">↻</button>
+    <button class="iconbtn" id="zoom-out" type="button" aria-label="Zoom out">−</button>
+    <button class="iconbtn" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+    <button class="pill" id="build-btn" type="button" hidden>Build</button>
+  </div>
+
+  <section class="card" id="card" hidden aria-live="polite">
+    <div class="mono" id="card-eyebrow"></div>
+    <h2 id="card-title"></h2>
+    <div class="sub" id="card-sub"></div>
+    <div id="card-body"></div>
+    <div class="err" id="card-err" role="alert"></div>
+    <div class="btns" id="card-btns"></div>
+  </section>
+
+  <section class="build" id="build" hidden aria-label="Build">
+    <div class="build-top">
+      <div class="seg" role="group" aria-label="Tool">
+        <button type="button" id="tool-place" aria-pressed="true">Place</button>
+        <button type="button" id="tool-select" aria-pressed="false">Select</button>
+        <button type="button" id="tool-erase" aria-pressed="false">Erase</button>
+      </div>
+      <div class="swatches" id="swatches" aria-label="Color"></div>
+      <button class="iconbtn" id="undo" type="button" aria-label="Undo" title="Undo">⤺</button>
+      <span class="grow"></span>
+      <input id="space-title" maxlength="48" placeholder="Name your Space" aria-label="Space name">
+      <span class="saved" id="saved"></span>
+      <button class="pill" id="publish" type="button" disabled>Publish</button>
+      <button class="pill ghost" id="done" type="button">Done</button>
+    </div>
+    <div class="palette" id="palette" aria-label="Blocks"></div>
+  </section>
+  <div class="toast" id="toast" role="status"></div>
+</div>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="/qube.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { api, grid, KINDS } = window.QUBE;
+  QUBE.nav("sfere", { overlay: true });
+  const fmt = new Intl.NumberFormat("en-US");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ----------------------------------------------------------------- address
+  // /sfere/5-083-553 or /sfere/5-083-553/room
+  const parts = location.pathname.replace(/^\/+|\/+$/g, "").split("/");
+  const at = grid.parseAddr(parts[1] || "") || grid.parseAddr(location.hash);
+  const startRoom = parts[2] || "main";
+  if (!at) { $("title").textContent = "No such Square"; return; }
+  const { row, col } = at;
+  const addr = grid.addr(row, col);
+  const LON = grid.center(row, col).lon;
+
+  // ------------------------------------------------------------------ blocks
+  // Each block: what it's called, what it costs, where it goes, and how it draws.
+  const BLOCKS = {
+    brick:     { cat: "Build",   name: "Brick",       cost: 1,  stack: true,  colored: true },
+    shape:     { cat: "Build",   name: "Shape",       cost: 5,  stack: true,  colored: true },
+    paint:     { cat: "Build",   name: "Paint",       cost: 1,  floor: true,  colored: true },
+    water:     { cat: "Build",   name: "Water",       cost: 2,  floor: true },
+    light:     { cat: "Build",   name: "Lamp",        cost: 5,  colored: true },
+    plant:     { cat: "Build",   name: "Plant",       cost: 3 },
+    berrybush: { cat: "Build",   name: "Berry bush",  cost: 3 },
+    sign:      { cat: "Show",    name: "Neon sign",   cost: 10, colored: true },
+    frame:     { cat: "Show",    name: "Frame",       cost: 10 },
+    board:     { cat: "Show",    name: "Notice board", cost: 15 },
+    portal:    { cat: "Connect", name: "Portal",      cost: 25 },
+    guestbook: { cat: "Connect", name: "Guestbook",   cost: 10 },
+    tipjar:    { cat: "Trade",   name: "Tip jar",     cost: 10 },
+  };
+  const SHAPES = ["sphere", "pyramid", "cylinder", "penta", "hexa"];
+  const PLANTS = ["bush", "tree", "flowers"];
+  const PALETTE = ["#111216", "#ffffff", "#c9cdd6", "#3a3df5", "#7b7ef8", "#e33a6d", "#ff8a3d", "#ffd23d", "#3ddc84", "#1fb5a8", "#5bc0ff", "#9b5cff", "#8a5a3c"];
+
+  // ------------------------------------------------------------------ state
+  let space = null, roomIdx = 0, layout = { v: 1, blocks: [] };
+  let rot = 0, zoom = 1, pan = { x: 0, y: 0 }, intro = 0;
+  let building = false, tool = "place", pick = "brick", color = null, selectedId = null;
+  const undoStack = [];
+  const room = () => (space && space.rooms[roomIdx]) || null;
+  const uid = () => Math.random().toString(36).slice(2, 9);
+
+  // ---------------------------------------------------------------- canvas
+  const cv = $("world");
+  let ctx = cv.getContext("2d");
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = innerWidth; H = innerHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  }
+  addEventListener("resize", resize); resize();
+
+  // Geometry: cells are 1 × 1, z is in block heights. The view turns in quarter steps.
+  const TW = () => Math.min(W, (H - (building ? 190 : 0)) * 1.4) / 11 * zoom * (0.6 + 0.4 * intro);
+  const BH = () => TW() * 0.56;
+  function turn(x, y) {   // a point on the floor, turned by the view (cell centers stay centers)
+    let X = x - 4.5, Y = y - 4.5;
+    for (let i = 0; i < rot; i++) { const t = X; X = -Y; Y = t; }
+    return [X, Y];
+  }
+  function unturn(X, Y) {
+    for (let i = 0; i < rot; i++) { const t = X; X = Y; Y = -t; }
+    return [X + 4.5, Y + 4.5];
+  }
+  const CX = () => W / 2 + pan.x, CY = () => (building ? (H - 190) * 0.58 : H * 0.56) + pan.y;
+  function P(X, Y, z) {   // turned coordinates → screen
+    const tw = TW();
+    return [CX() + (X - Y) * tw / 2, CY() + (X + Y) * tw / 4 - z * BH()];
+  }
+  const Pc = (x, y, z) => { const [X, Y] = turn(x, y); return P(X, Y, z); };   // cell coords → screen
+
+  // ------------------------------------------------------------------ color
+  function hex2rgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+  function shade(h, k) {   // k > 0 lightens, k < 0 darkens
+    const [r, g, b] = hex2rgb(h);
+    const f = (c) => Math.round(k > 0 ? c + (255 - c) * k : c * (1 + k));
+    return `rgb(${f(r)},${f(g)},${f(b)})`;
+  }
+  const rgba = (h, a) => { const [r, g, b] = hex2rgb(h); return `rgba(${r},${g},${b},${a})`; };
+  const mixHex = (a, b, t) => { const A = hex2rgb(a), B = hex2rgb(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
+
+  // -------------------------------------------------------------- day/night
+  // Night where the Square is: the sun follows its longitude.
+  function nightness() {
+    const now = new Date();
+    const hour = (now.getUTCHours() + now.getUTCMinutes() / 60 + LON / 15 + 48) % 24;
+    if (hour >= 7.5 && hour <= 17.5) return 0;
+    if (hour >= 20 || hour <= 5) return 1;
+    return hour < 12 ? (7.5 - hour) / 2.5 : (hour - 17.5) / 2.5;
+  }
+  let night = 0;
+
+  // ---------------------------------------------------------------- drawing helpers
+  function poly(pts, fill, stroke) {
+    ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+  }
+  // A prism standing on (X, Y): n sides, radius r (in cells), from z0 to z1. n = 4 at 45° is a cube.
+  function prism(X, Y, n, r, a0, z0, z1, c, opts = {}) {
+    const pts = Array.from({ length: n }, (_, i) => { const a = a0 + (i / n) * Math.PI * 2; return [X + Math.cos(a) * r, Y + Math.sin(a) * r]; });
+    const edge = opts.edge ?? "rgba(17,18,22,0.14)";
+    const sides = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n];
+      const nx = (a[1] - b[1]), ny = (b[0] - a[0]);   // outward normal (counter-clockwise polygon)
+      if (nx + ny <= 0) continue;   // faces away from the viewer (who looks along −X −Y)
+      sides.push({ a, b, d: (a[0] + b[0] + a[1] + b[1]) / 2, light: nx / Math.hypot(nx, ny) });
+    }
+    sides.sort((p, q) => p.d - q.d);
+    for (const s of sides) {
+      const k = -0.05 - 0.22 * Math.max(0, s.light) + (opts.glass ? 0 : 0);
+      poly([P(s.a[0], s.a[1], z1), P(s.b[0], s.b[1], z1), P(s.b[0], s.b[1], z0), P(s.a[0], s.a[1], z0)], opts.alpha ? rgba(c, opts.alpha) : shade(c, k), edge);
+    }
+    const top = pts.map(([x, y]) => P(x, y, z1));
+    if (!opts.noTop) poly(top, opts.alpha ? rgba(c, opts.alpha * 0.8) : shade(c, 0.14), edge);
+    return top;
+  }
+  const cube = (X, Y, z0, z1, c, o) => prism(X, Y, 4, Math.SQRT1_2 * 0.999, Math.PI / 4, z0, z1, c, o);
+  function shadowAt(X, Y, z, r) {
+    const [sx, sy] = P(X, Y, z); const tw = TW();
+    ctx.fillStyle = `rgba(17,18,22,${0.12 * (1 - night * 0.5)})`;
+    ctx.beginPath(); ctx.ellipse(sx, sy, r * tw / 2, r * tw / 4, 0, 0, 7); ctx.fill();
+  }
+  function ball(X, Y, zc, r, c) {
+    const [sx, sy] = P(X, Y, zc); const R = r * TW() * 0.62;
+    const g = ctx.createRadialGradient(sx - R * 0.35, sy - R * 0.4, R * 0.1, sx, sy, R);
+    g.addColorStop(0, shade(c, 0.45)); g.addColorStop(0.65, c); g.addColorStop(1, shade(c, -0.3));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, R, 0, 7); ctx.fill();
+    return [sx, sy, R];
+  }
+  // A flat panel standing upright along one axis of the floor (d = 0 along x, 1 along y).
+  function panelCorners(x, y, z0, z1, d, half = 0.44) {
+    const a = d ? [x + 0.5, y + 0.5 - half] : [x + 0.5 - half, y + 0.5];
+    const b = d ? [x + 0.5, y + 0.5 + half] : [x + 0.5 + half, y + 0.5];
+    const A = turn(a[0] - 0.5 + 0.5, a[1] - 0.5 + 0.5), B = turn(b[0], b[1]);
+    return [P(A[0], A[1], z1), P(B[0], B[1], z1), P(B[0], B[1], z0), P(A[0], A[1], z0)];
+  }
+  const images = new Map();
+  function img(url) {
+    if (!url) return null;
+    if (!images.has(url)) { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => (dirty = true); im.src = url; images.set(url, im); }
+    const im = images.get(url);
+    return im.complete && im.naturalWidth ? im : null;
+  }
+  function drawOnPanel(corners, im) {   // affine-map an image onto a standing panel
+    const [A, B, , D] = corners;
+    const s = Math.min(im.naturalWidth, im.naturalHeight), sx0 = (im.naturalWidth - s) / 2, sy0 = (im.naturalHeight - s) / 2;
+    ctx.save();
+    ctx.setTransform(DPR * (B[0] - A[0]) / s, DPR * (B[1] - A[1]) / s, DPR * (D[0] - A[0]) / s, DPR * (D[1] - A[1]) / s, DPR * A[0], DPR * A[1]);
+    ctx.drawImage(im, sx0, sy0, s, s, 0, 0, s, s);
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------- what's in the room
+  // Built-in pieces from the Square's type sit in the back corner (cells 0–2, 0–2).
+  const RESERVED = (x, y) => space && space.kind && space.kind !== "residential" && x <= 2 && y <= 2;
+  function builtins() {
+    if (!space || !space.kind) return [];
+    const out = [];
+    const c = space.color || "#3a3df5";
+    if (space.kind === "industrial") {
+      for (let i = 0; i < Math.min(9, space.mines || 1); i++) out.push({ t: "_mine", x: i % 3, y: Math.floor(i / 3), z: 0, c });
+    } else if (space.kind === "agricultural") {
+      for (let i = 0; i < 9; i++) out.push({ t: "_field", x: i % 3, y: Math.floor(i / 3), z: 0, ripe: space.ripe });
+    } else if (space.kind === "social") {
+      out.push({ t: "_wall", x: 1, y: 0, z: 0, c });
+    } else if (space.kind === "promotional") {
+      out.push({ t: "_billboard", x: 1, y: 1, z: 0, c, url: space.promo_url });
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- the resident agent
+  const agent = { x: 5.5, y: 5.5, tx: 5.5, ty: 5.5, t0: 0, next: 0 };
+  function occupied(x, y) {
+    if (RESERVED(x, y)) return true;
+    return layout.blocks.some((b) => b.x === x && b.y === y && !BLOCKS[b.t]?.floor && b.t !== "water");
+  }
+  function stepAgent(now) {
+    if (!space || !space.agent_name) return;
+    if (night > 0.6) return;   // asleep
+    if (now > agent.next) {
+      for (let i = 0; i < 20; i++) {
+        const x = Math.floor(Math.random() * 9), y = Math.floor(Math.random() * 9);
+        if (!occupied(x, y)) { agent.tx = x + 0.5; agent.ty = y + 0.5; break; }
+      }
+      agent.next = now + 3500 + Math.random() * 5000;
+    }
+    const dx = agent.tx - agent.x, dy = agent.ty - agent.y, d = Math.hypot(dx, dy);
+    if (d > 0.02) { const s = Math.min(d, 0.018); agent.x += (dx / d) * s; agent.y += (dy / d) * s; dirty = true; }
+  }
+
+  // ---------------------------------------------------------------- render
+  let dirty = true, hits = [];
+  const t0 = performance.now();
+  function columnTop(x, y, ignore) {
+    let top = 0;
+    for (const b of layout.blocks) if (b !== ignore && b.x === x && b.y === y && !BLOCKS[b.t]?.floor) top = Math.max(top, b.z + (BLOCKS[b.t]?.stack ? 1 : 1));
+    return top;
+  }
+
+  function drawBlock(b, now) {
+    const [X, Y] = turn(b.x + 0.5, b.y + 0.5);
+    const z = b.z || 0, c = b.c || space.color || "#3a3df5";
+    const tw = TW(), t = (now - t0) / 1000;
+    let hit = null;
+    switch (b.t) {
+      case "brick": {
+        const top = cube(X, Y, z, z + 1, c);
+        hit = [P(X - 0.5, Y - 0.5, z + 1), P(X + 0.5, Y - 0.5, z + 1), P(X + 0.5, Y - 0.5, z), P(X + 0.5, Y + 0.5, z), P(X - 0.5, Y + 0.5, z), P(X - 0.5, Y + 0.5, z + 1)];
+        hit.top = top;
+        break;
+      }
+      case "shape": {
+        const s = b.s || "sphere";
+        if (z === 0) shadowAt(X, Y, z, 0.4);
+        if (s === "sphere") { const [sx, sy, R] = ball(X, Y, z + 0.45, 0.42, c); hit = { circle: [sx, sy, R] }; }
+        else if (s === "pyramid") {
+          const base = [[X - 0.42, Y - 0.42], [X + 0.42, Y - 0.42], [X + 0.42, Y + 0.42], [X - 0.42, Y + 0.42]];
+          const apex = P(X, Y, z + 1);
+          poly([P(base[1][0], base[1][1], z), P(base[2][0], base[2][1], z), apex], shade(c, -0.22), "rgba(17,18,22,.14)");
+          poly([P(base[2][0], base[2][1], z), P(base[3][0], base[3][1], z), apex], shade(c, -0.05), "rgba(17,18,22,.14)");
+          hit = [apex, P(base[1][0], base[1][1], z), P(base[2][0], base[2][1], z), P(base[3][0], base[3][1], z)];
+        } else {
+          const n = s === "cylinder" ? 28 : s === "penta" ? 5 : 6;
+          prism(X, Y, n, 0.42, -Math.PI / 2, z, z + 0.9, c);
+          hit = { circle: [...P(X, Y, z + 0.45), tw * 0.32] };
+        }
+        break;
+      }
+      case "light": {
+        prism(X, Y, 8, 0.05, 0, z, z + 1.2, "#2a2c33");
+        prism(X, Y, 8, 0.16, 0, z, z + 0.08, "#2a2c33");
+        const [sx, sy] = P(X, Y, z + 1.3), R = tw * 0.11;
+        ctx.fillStyle = night > 0.3 ? c : shade(c, 0.5);
+        ctx.beginPath(); ctx.arc(sx, sy, R, 0, 7); ctx.fill();
+        if (night > 0.05) {
+          ctx.save(); ctx.globalCompositeOperation = "lighter";
+          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, tw * 1.6);
+          g.addColorStop(0, rgba(c, 0.55 * night)); g.addColorStop(1, rgba(c, 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, tw * 1.6, 0, 7); ctx.fill();
+          ctx.restore();
+        }
+        hit = { circle: [...P(X, Y, z + 0.7), tw * 0.22] };
+        break;
+      }
+      case "plant": {
+        const k = b.k || "bush";
+        shadowAt(X, Y, z, 0.32);
+        if (k === "tree") {
+          prism(X, Y, 8, 0.07, 0, z, z + 1, "#8a5a3c");
+          ball(X - 0.08, Y + 0.05, z + 1.35, 0.4, "#3faa5a"); ball(X + 0.1, Y - 0.08, z + 1.55, 0.3, "#52c26b");
+          hit = { circle: [...P(X, Y, z + 1.3), tw * 0.36] };
+        } else if (k === "flowers") {
+          const cols = ["#e33a6d", "#ffd23d", "#9b5cff", "#ff8a3d", "#5bc0ff"];
+          for (let i = 0; i < 7; i++) {
+            const a = i * 2.4, r = 0.12 + (i % 3) * 0.1, fx = X + Math.cos(a) * r, fy = Y + Math.sin(a) * r;
+            const [x0, y0] = P(fx, fy, z), [x1, y1] = P(fx, fy, z + 0.35 + (i % 2) * 0.12);
+            ctx.strokeStyle = "#3faa5a"; ctx.lineWidth = Math.max(1, tw * 0.02); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+            ctx.fillStyle = cols[i % cols.length]; ctx.beginPath(); ctx.arc(x1, y1, tw * 0.05, 0, 7); ctx.fill();
+          }
+          hit = { circle: [...P(X, Y, z + 0.3), tw * 0.26] };
+        } else {
+          ball(X - 0.12, Y + 0.08, z + 0.28, 0.3, "#3faa5a"); ball(X + 0.14, Y - 0.06, z + 0.32, 0.3, "#47b863"); ball(X, Y, z + 0.45, 0.28, "#52c26b");
+          hit = { circle: [...P(X, Y, z + 0.35), tw * 0.3] };
+        }
+        break;
+      }
+      case "berrybush": {
+        shadowAt(X, Y, z, 0.32);
+        ball(X - 0.12, Y + 0.08, z + 0.28, 0.3, "#3d9d55"); ball(X + 0.14, Y - 0.06, z + 0.32, 0.3, "#47ad5e"); ball(X, Y, z + 0.45, 0.28, "#4fb866");
+        // it ripens over three days
+        const days = b.at ? (Date.now() - b.at) / 86400000 : 0;
+        const n = Math.min(9, 2 + Math.floor(days * 3));
+        for (let i = 0; i < n; i++) {
+          const a = i * 2.2 + 0.5, r = 0.14 + (i % 3) * 0.07;
+          const [bx, by] = P(X + Math.cos(a) * r, Y + Math.sin(a) * r, z + 0.32 + (i % 4) * 0.08);
+          ctx.fillStyle = "#e33a6d"; ctx.beginPath(); ctx.arc(bx, by, tw * 0.035, 0, 7); ctx.fill();
+        }
+        hit = { circle: [...P(X, Y, z + 0.35), tw * 0.3] };
+        break;
+      }
+      case "sign": {
+        const text = (b.text || "Hello").slice(0, 40);
+        const [sx, sy] = P(X, Y, z + 0.7 + Math.sin(t * 1.4 + b.x) * 0.03);
+        const size = Math.max(9, tw * 0.3);
+        ctx.font = `300 ${size}px Unbounded, sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.save();
+        ctx.shadowColor = c; ctx.shadowBlur = size * (0.5 + night * 1.2);
+        ctx.fillStyle = night > 0.4 ? shade(c, 0.35) : c;
+        ctx.fillText(text, sx, sy);
+        ctx.restore();
+        const w = ctx.measureText(text).width;
+        hit = [[sx - w / 2, sy - size * 0.7], [sx + w / 2, sy - size * 0.7], [sx + w / 2, sy + size * 0.7], [sx - w / 2, sy + size * 0.7]];
+        break;
+      }
+      case "frame": case "board": case "_billboard": {
+        const d = (b.d || 0) ^ (rot % 2);
+        const big = b.t === "_billboard";
+        const corners = big ? panelCorners(b.x, b.y, z + 0.5, z + 2.6, d, 1.4) : panelCorners(b.x, b.y, z + 0.25, z + 1.35, d, 0.42);
+        // legs
+        const legs = big ? [[-1.1, 0], [1.1, 0]] : [[-0.3, 0], [0.3, 0]];
+        for (const [o] of legs) {
+          const lx = d ? b.x + 0.5 : b.x + 0.5 + o, ly = d ? b.y + 0.5 + o : b.y + 0.5;
+          const [LX, LY] = turn(lx, ly);
+          prism(LX, LY, 6, 0.04, 0, z, z + (big ? 0.6 : 0.3), "#2a2c33");
+        }
+        poly(corners, b.t === "board" ? "#d9b98c" : "#fff", "rgba(17,18,22,.35)");
+        const im = img(b.url);
+        if (im) drawOnPanel(corners, im);
+        else if (b.t === "board") {
+          // three pinned notes
+          const lerp = (p, q, s) => [p[0] + (q[0] - p[0]) * s, p[1] + (q[1] - p[1]) * s];
+          for (let i = 0; i < 3; i++) {
+            const u0 = 0.1 + i * 0.3, u1 = u0 + 0.24;
+            const top0 = lerp(corners[0], corners[1], u0), top1 = lerp(corners[0], corners[1], u1);
+            const bot0 = lerp(corners[3], corners[2], u0), bot1 = lerp(corners[3], corners[2], u1);
+            poly([lerp(top0, bot0, 0.15), lerp(top1, bot1, 0.15), lerp(top1, bot1, 0.75), lerp(top0, bot0, 0.75)], i === 1 ? "#fff6c9" : "#ffffff", "rgba(17,18,22,.15)");
+          }
+        } else if (!big) {
+          poly(corners.map(([x, y], i) => [x + (i === 0 || i === 3 ? 4 : -4) * (d ? 0 : 1), y]), null, null);
+          const [mx, my] = [(corners[0][0] + corners[2][0]) / 2, (corners[0][1] + corners[2][1]) / 2];
+          ctx.fillStyle = "rgba(17,18,22,.35)"; ctx.font = `400 ${Math.max(8, tw * 0.12)}px JetBrains Mono, monospace`; ctx.textAlign = "center"; ctx.fillText("IMAGE", mx, my);
+        } else {
+          ctx.fillStyle = rgba(c, 0.85); poly(corners, rgba(c, 0.85));
+        }
+        hit = corners;
+        break;
+      }
+      case "portal": {
+        const [sx, sy] = P(X, Y, z + 0.8);
+        const rx = tw * 0.3, ry = BH() * 0.82;
+        shadowAt(X, Y, z, 0.35);
+        ctx.save();
+        const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, ry);
+        g.addColorStop(0, "#ffffff"); g.addColorStop(0.5, "#9b9df9"); g.addColorStop(1, "#3a3df5");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, rx, ry, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = Math.max(1, tw * 0.02);
+        for (let i = 0; i < 3; i++) {
+          const k = ((t * 0.5 + i / 3) % 1);
+          ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.ellipse(sx, sy, rx * (0.25 + k * 0.75), ry * (0.25 + k * 0.75), 0, 0, 7); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = Math.max(2, tw * 0.05); ctx.strokeStyle = "#111216"; ctx.beginPath(); ctx.ellipse(sx, sy, rx, ry, 0, 0, 7); ctx.stroke();
+        if (night > 0.05) {
+          ctx.globalCompositeOperation = "lighter";
+          const gl = ctx.createRadialGradient(sx, sy, 0, sx, sy, tw * 1.3);
+          gl.addColorStop(0, rgba("#3a3df5", 0.45 * night)); gl.addColorStop(1, rgba("#3a3df5", 0));
+          ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(sx, sy, tw * 1.3, 0, 7); ctx.fill();
+        }
+        ctx.restore();
+        if (b.label) {
+          ctx.font = `400 ${Math.max(9, tw * 0.15)}px JetBrains Mono, monospace`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+          ctx.fillStyle = night > 0.5 ? "#f2f2fa" : "#111216"; ctx.fillText(b.label.toUpperCase(), sx, sy - ry - 6);
+        }
+        hit = { circle: [sx, sy, Math.max(rx, ry)] };
+        break;
+      }
+      case "guestbook": {
+        cube(X, Y, z, z + 0.7, "#8a5a3c", {});
+        const [a, bb] = [[X - 0.32, Y - 0.24], [X + 0.32, Y + 0.24]];
+        poly([P(a[0], a[1], z + 0.72), P(X, Y - 0.24, z + 0.78), P(X, Y + 0.24, z + 0.78), P(a[0], bb[1], z + 0.72)], "#ffffff", "rgba(17,18,22,.25)");
+        poly([P(X, Y - 0.24, z + 0.78), P(bb[0], a[1], z + 0.72), P(bb[0], bb[1], z + 0.72), P(X, Y + 0.24, z + 0.78)], "#f4f4f6", "rgba(17,18,22,.25)");
+        hit = { circle: [...P(X, Y, z + 0.5), tw * 0.36] };
+        break;
+      }
+      case "tipjar": {
+        shadowAt(X, Y, z, 0.25);
+        prism(X, Y, 24, 0.22, 0, z, z + 0.62, "#ffd23d", { noTop: true });
+        for (let i = 0; i < 5; i++) { const [cx2, cy2] = P(X + Math.cos(i * 2) * 0.1, Y + Math.sin(i * 2) * 0.1, z + 0.08 + i * 0.07); ctx.fillStyle = "#e8b80f"; ctx.beginPath(); ctx.ellipse(cx2, cy2, tw * 0.06, tw * 0.03, 0, 0, 7); ctx.fill(); }
+        prism(X, Y, 24, 0.26, 0, z, z + 0.85, "#cfe9ff", { alpha: 0.3, edge: "transparent", noTop: true });
+        { const [rx, ry] = P(X, Y, z + 0.85); ctx.strokeStyle = "rgba(17,18,22,.35)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(rx, ry, tw * 0.26 * 0.707, tw * 0.26 * 0.354, 0, 0, 7); ctx.stroke(); }
+        hit = { circle: [...P(X, Y, z + 0.4), tw * 0.24] };
+        break;
+      }
+      case "_mine": {
+        // a pithead: a dark shaft collar, a tapering steel frame and a turning wheel
+        const h = 1.7;
+        cube(X, Y, z, z + 0.3, "#3a3c44");
+        const [gx, gy] = P(X, Y, z + 0.3);
+        const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, tw * 0.3);
+        glow.addColorStop(0, rgba(c, 0.9)); glow.addColorStop(1, rgba(c, 0));
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(gx, gy, tw * 0.3, tw * 0.15, 0, 0, 7); ctx.fill();
+        const apex = P(X, Y, z + h);
+        ctx.strokeStyle = "#2a2c33"; ctx.lineWidth = Math.max(1.5, tw * 0.035); ctx.lineCap = "round";
+        const legs = [[-0.4, -0.4], [0.4, -0.4], [0.4, 0.4], [-0.4, 0.4]].map(([ox, oy]) => P(X + ox, Y + oy, z + 0.3));
+        ctx.beginPath();
+        for (const l of legs) { ctx.moveTo(l[0], l[1]); ctx.lineTo(apex[0], apex[1]); }
+        for (const k of [0.35, 0.65]) legs.forEach((l, i) => { const m = legs[(i + 1) % 4]; const lerp = (q) => [q[0] + (apex[0] - q[0]) * k, q[1] + (apex[1] - q[1]) * k]; const [a1, a2] = [lerp(l), lerp(m)]; ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); });
+        ctx.stroke();
+        const R = tw * 0.17, spin = t * 1.6 + b.x + b.y;
+        ctx.strokeStyle = c; ctx.lineWidth = Math.max(2, tw * 0.04);
+        ctx.beginPath(); ctx.arc(apex[0], apex[1] - R * 0.4, R, 0, 7); ctx.stroke();
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) { const a = spin + (i * Math.PI) / 3; ctx.moveTo(apex[0] - Math.cos(a) * R, apex[1] - R * 0.4 - Math.sin(a) * R); ctx.lineTo(apex[0] + Math.cos(a) * R, apex[1] - R * 0.4 + Math.sin(a) * R); }
+        ctx.stroke(); ctx.lineCap = "butt";
+        hit = { circle: [...P(X, Y, z + 0.8), tw * 0.4] };
+        break;
+      }
+      case "_field": {
+        poly([P(X - 0.5, Y - 0.5, 0.02), P(X + 0.5, Y - 0.5, 0.02), P(X + 0.5, Y + 0.5, 0.02), P(X - 0.5, Y + 0.5, 0.02)], "#c9a77a");
+        ball(X - 0.15, Y + 0.1, 0.22, 0.22, "#3d9d55"); ball(X + 0.15, Y - 0.1, 0.24, 0.22, "#47ad5e");
+        if (b.ripe) for (let i = 0; i < 6; i++) { const [bx, by] = P(X + Math.cos(i * 1.7) * 0.18, Y + Math.sin(i * 1.7) * 0.18, 0.28 + (i % 3) * 0.06); ctx.fillStyle = "#e33a6d"; ctx.beginPath(); ctx.arc(bx, by, tw * 0.035, 0, 7); ctx.fill(); }
+        hit = { circle: [...P(X, Y, 0.25), tw * 0.34] };
+        break;
+      }
+      case "_wall": {
+        const d = rot % 2;
+        const corners = panelCorners(1, 0, 0.2, 2.6, d, 1.45);
+        poly(corners, "#ffffff", "rgba(17,18,22,.3)");
+        const lerp = (p, q, s) => [p[0] + (q[0] - p[0]) * s, p[1] + (q[1] - p[1]) * s];
+        for (let i = 0; i < 9; i++) {
+          const u = (i % 3) / 3 + 0.03, v = Math.floor(i / 3) / 3 + 0.03;
+          const q = (uu, vv) => lerp(lerp(corners[0], corners[1], uu), lerp(corners[3], corners[2], uu), vv);
+          poly([q(u, v), q(u + 0.27, v), q(u + 0.27, v + 0.27), q(u, v + 0.27)], i < (space.posts || []).length * 3 ? c : rgba(c, 0.18));
+        }
+        hit = corners;
+        break;
+      }
+    }
+    return hit;
+  }
+
+  function drawAgent(now) {
+    if (!space || !space.agent_name) return null;
+    const [X, Y] = turn(agent.x, agent.y);
+    const asleep = night > 0.6;
+    const bob = asleep ? 0 : Math.abs(Math.sin(now / 260)) * 0.12;
+    shadowAt(X, Y, 0, 0.34);
+    const [sx, sy, R] = ball(X, Y, 0.45 + bob, 0.4, space.color || "#3a3df5");
+    ctx.font = `400 ${Math.max(9, R * 0.42)}px JetBrains Mono, monospace`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = night > 0.5 ? "#f2f2fa" : "#111216"; ctx.fillText(space.agent_name.toUpperCase(), sx, sy - R - 8);
+    ctx.fillStyle = "#fff";
+    if (asleep) { ctx.fillRect(sx - R * 0.42, sy - R * 0.05, R * 0.25, R * 0.07); ctx.fillRect(sx + R * 0.17, sy - R * 0.05, R * 0.25, R * 0.07);
+      ctx.fillStyle = night > 0.5 ? "#f2f2fa" : "#111216"; ctx.font = `400 ${R * 0.6}px Unbounded`; ctx.fillText("z", sx + R * 0.9, sy - R * (0.9 + 0.2 * Math.sin(now / 600)));
+    } else { ctx.beginPath(); ctx.ellipse(sx - R * 0.28, sy - R * 0.08, R * 0.1, R * 0.15, 0, 0, 7); ctx.ellipse(sx + R * 0.28, sy - R * 0.08, R * 0.1, R * 0.15, 0, 0, 7); ctx.fill(); }
+    return { circle: [sx, sy, R], agent: true };
+  }
+
+  function render(now) {
+    const W2 = W, H2 = H;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, H2);
+    const dusk = Math.max(0, 1 - Math.abs(night * 2 - 1));   // sunrise and sunset glow
+    sky.addColorStop(0, mixHex(mixHex("#f5f6f8", "#0f1024", night), "#6a5acd", dusk * 0.25));
+    sky.addColorStop(1, mixHex(mixHex("#ffffff", "#24264a", night), "#ffa77a", dusk * 0.45));
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W2, H2);
+    if (night > 0.3) {   // stars
+      ctx.fillStyle = `rgba(255,255,255,${0.6 * night})`;
+      for (let i = 0; i < 90; i++) { const x = (Math.sin(i * 91.7) * 0.5 + 0.5) * W2, y = (Math.sin(i * 37.3) * 0.5 + 0.5) * H2 * 0.6; ctx.fillRect(x, y, 1.4, 1.4); }
+    }
+    hits = [];
+    if (!space) return;
+    const base = space.color || "#3a3df5";
+    const floor = mixHex(mixHex(base, "#ffffff", 0.86), "#2a2c4a", night * 0.75);
+
+    // the slab under the floor
+    const s0 = turn(0, 0), s1 = turn(9, 0), s2 = turn(9, 9), s3 = turn(0, 9);
+    const corners = [s0, s1, s2, s3];
+    // pick the two front edges (largest X+Y)
+    const slabC = mixHex(mixHex(base, "#111216", 0.35), "#0c0d1c", night * 0.5);
+    for (let i = 0; i < 4; i++) {
+      const a = corners[i], b = corners[(i + 1) % 4];
+      const nx = a[1] - b[1], ny = b[0] - a[0];
+      if (nx + ny > 0) continue;
+      poly([P(a[0], a[1], 0), P(b[0], b[1], 0), P(b[0], b[1], -0.45), P(a[0], a[1], -0.45)], shade(slabC, nx < 0 ? -0.15 : 0.05));
+    }
+    // tiles
+    for (let x = 0; x < 9; x++) for (let y = 0; y < 9; y++) {
+      const [X, Y] = turn(x + 0.5, y + 0.5);
+      const f = (x + y) % 2 ? floor : shade(floor, -0.025);
+      poly([P(X - 0.5, Y - 0.5, 0), P(X + 0.5, Y - 0.5, 0), P(X + 0.5, Y + 0.5, 0), P(X - 0.5, Y + 0.5, 0)], f, rgba("#111216", 0.06));
+    }
+    // floor layers
+    const t = (now - t0) / 1000;
+    for (const b of layout.blocks) {
+      if (b.t !== "paint" && b.t !== "water") continue;
+      const [X, Y] = turn(b.x + 0.5, b.y + 0.5);
+      const quad = [P(X - 0.5, Y - 0.5, 0.01), P(X + 0.5, Y - 0.5, 0.01), P(X + 0.5, Y + 0.5, 0.01), P(X - 0.5, Y + 0.5, 0.01)];
+      if (b.t === "paint") poly(quad, mixHex(b.c || base, "#1a1b30", night * 0.5));
+      else {
+        poly(quad, mixHex("#5bc0ff", "#1b3c6b", night * 0.6));
+        ctx.save(); ctx.beginPath(); quad.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.clip();
+        ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1;
+        const [sx, sy] = P(X, Y, 0.01), tw = TW();
+        for (let i = 0; i < 2; i++) { const k = (t * 0.4 + i * 0.5 + (b.x * 0.3 + b.y * 0.7)) % 1; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.ellipse(sx, sy, tw * 0.5 * k, tw * 0.25 * k, 0, 0, 7); ctx.stroke(); }
+        ctx.restore();
+      }
+      hits.push({ poly: quad, ref: b });
+    }
+    // hover and placement ghost on the floor
+    if (hoverCell && building) {
+      const [X, Y] = turn(hoverCell.x + 0.5, hoverCell.y + 0.5);
+      const z = hoverCell.z || 0;
+      poly([P(X - 0.5, Y - 0.5, z + 0.012), P(X + 0.5, Y - 0.5, z + 0.012), P(X + 0.5, Y + 0.5, z + 0.012), P(X - 0.5, Y + 0.5, z + 0.012)], rgba(tool === "erase" ? "#e5484d" : "#3a3df5", 0.25), rgba(tool === "erase" ? "#e5484d" : "#3a3df5", 0.8));
+    }
+
+    // everything standing, back to front
+    const things = [...builtins(), ...layout.blocks.filter((b) => b.t !== "paint" && b.t !== "water")].map((b) => {
+      const [X, Y] = turn(b.x + 0.5, b.y + 0.5);
+      return { b, d: X + Y, z: b.z || 0 };
+    });
+    if (space.agent_name) { const [X, Y] = turn(agent.x, agent.y); things.push({ agent: true, d: X + Y + 0.01, z: 0 }); }
+    things.sort((p, q) => p.d - q.d || p.z - q.z);
+    for (const th of things) {
+      if (th.agent) { const h = drawAgent(now); if (h) hits.push({ ...h, ref: { t: "_agent" } }); continue; }
+      ctx.globalAlpha = th.b.id && th.b.id === selectedId && building ? 0.8 : 1;
+      const h = drawBlock(th.b, now);
+      ctx.globalAlpha = 1;
+      if (h) hits.push(Array.isArray(h) ? { poly: h, ref: th.b } : { ...h, ref: th.b });
+      if (th.b.id && th.b.id === selectedId && building && h) outline(h);
+    }
+    // night: a soft shade over the room
+    if (night > 0) { ctx.fillStyle = `rgba(10,12,40,${0.12 * night})`; ctx.fillRect(0, 0, W2, H2); }
+  }
+  function outline(h) {
+    ctx.strokeStyle = "#3a3df5"; ctx.lineWidth = 2;
+    if (Array.isArray(h)) { ctx.beginPath(); h.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.stroke(); }
+    else if (h.circle) { ctx.beginPath(); ctx.arc(h.circle[0], h.circle[1], h.circle[2] + 3, 0, 7); ctx.stroke(); }
+  }
+
+  // ---------------------------------------------------------------- hit testing
+  function inPoly(pts, x, y) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function hitAt(x, y, standingOnly) {
+    for (let i = hits.length - 1; i >= 0; i--) {
+      const h = hits[i];
+      if (standingOnly && (h.ref.t === "paint" || h.ref.t === "water")) continue;
+      if (h.poly && inPoly(h.poly, x, y)) return h;
+      if (h.circle && Math.hypot(x - h.circle[0], y - h.circle[1]) <= h.circle[2]) return h;
+    }
+    return null;
+  }
+  function floorCell(x, y) {
+    const tw = TW();
+    const a = (x - CX()) / (tw / 2), b = (y - CY()) / (tw / 4);
+    const X = (a + b) / 2, Y = (b - a) / 2;
+    const [cx, cy] = unturn(X, Y);
+    const fx = Math.floor(cx), fy = Math.floor(cy);
+    return fx >= 0 && fx < 9 && fy >= 0 && fy < 9 ? { x: fx, y: fy } : null;
+  }
+  // Where a click in build mode puts a block: on top of the stack it hits, or on the floor.
+  function targetCell(x, y) {
+    const h = hitAt(x, y, true);
+    if (h && h.ref && h.ref.x != null && !String(h.ref.t).startsWith("_")) return { x: h.ref.x, y: h.ref.y, on: h.ref };
+    const c = floorCell(x, y);
+    return c;
+  }
+
+  // ---------------------------------------------------------------- loop
+  function frame(now) {
+    night = nightness();
+    document.body.classList.toggle("night", night > 0.5);
+    if (intro < 1) { intro = reduce ? 1 : Math.min(1, intro + 0.035); }
+    stepAgent(now);
+    render(now);
+    requestAnimationFrame(frame);
+  }
+
+  // ---------------------------------------------------------------- input
+  let drag = null, hoverCell = null;
+  const pointers = new Map();
+  let pinch = null;
+  cv.addEventListener("pointerdown", (e) => {
+    cv.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: zoom }; drag = null; return; }
+    drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: 0 };
+  });
+  cv.addEventListener("pointermove", (e) => {
+    const p = pointers.get(e.pointerId); if (p) { p.x = e.clientX; p.y = e.clientY; }
+    if (pinch && pointers.size === 2) { const [a, b] = [...pointers.values()]; zoom = Math.max(0.5, Math.min(2.6, pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d)); return; }
+    if (drag) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      drag.moved += Math.abs(dx) + Math.abs(dy); drag.x = e.clientX; drag.y = e.clientY;
+      if (drag.moved > 6) { pan.x += dx; pan.y += dy; cv.classList.add("dragging"); }
+      return;
+    }
+    const h = hitAt(e.clientX, e.clientY);
+    if (building) {
+      if (tool === "place") {
+        const c = targetCell(e.clientX, e.clientY);
+        hoverCell = c && !RESERVED(c.x, c.y) ? { x: c.x, y: c.y, z: BLOCKS[pick]?.floor ? 0 : columnTop(c.x, c.y) } : null;
+      } else hoverCell = null;
+      cv.className = tool === "place" ? "placing" : h ? "pointing" : "";
+    } else cv.classList.toggle("pointing", Boolean(h && h.ref && h.ref.t !== "paint"));
+  });
+  const end = (e) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (drag && e.type === "pointerup" && drag.moved <= 6) click(e.clientX, e.clientY, e.shiftKey);
+    drag = null; cv.classList.remove("dragging");
+  };
+  cv.addEventListener("pointerup", end);
+  cv.addEventListener("pointercancel", end);
+  cv.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.max(0.5, Math.min(2.6, zoom * Math.exp(-e.deltaY * 0.0015))); }, { passive: false });
+  $("zoom-in").addEventListener("click", () => (zoom = Math.min(2.6, zoom * 1.2)));
+  $("zoom-out").addEventListener("click", () => (zoom = Math.max(0.5, zoom / 1.2)));
+  $("rot-l").addEventListener("click", () => { rot = (rot + 3) % 4; });
+  $("rot-r").addEventListener("click", () => { rot = (rot + 1) % 4; });
+  addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea")) return;
+    if (e.key === "q" || e.key === "Q") rot = (rot + 3) % 4;
+    if (e.key === "e" || e.key === "E") rot = (rot + 1) % 4;
+    if (building && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
+    if (building && (e.key === "Delete" || e.key === "Backspace") && selectedId) { removeBlock(layout.blocks.find((b) => b.id === selectedId)); }
+    if (e.key === "Escape") closeCard();
+  });
+
+  function click(x, y, shift) {
+    if (building) return buildClick(x, y, shift);
+    const h = hitAt(x, y);
+    if (!h || !h.ref) return closeCard();
+    open(h.ref);
+  }
+
+  // ---------------------------------------------------------------- cards (visiting)
+  let toastT;
+  function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
+  function btn(label, onClick, ghost, href) {
+    const b = document.createElement(href ? "a" : "button");
+    b.className = "pill" + (ghost ? " ghost" : ""); b.textContent = label;
+    if (href) { b.href = href; b.style.display = "inline-grid"; b.style.placeItems = "center"; b.style.textDecoration = "none"; } else { b.type = "button"; if (onClick) b.addEventListener("click", onClick); }
+    return b;
+  }
+  function card({ eyebrow, title, sub, body, buttons = [] }) {
+    $("card").hidden = false;
+    $("card-eyebrow").textContent = eyebrow || ""; $("card-title").textContent = title || ""; $("card-sub").textContent = sub || "";
+    $("card-body").replaceChildren(...(body ? [body] : [])); $("card-err").textContent = "";
+    $("card-btns").replaceChildren(...buttons, btn("Close", closeCard, true));
+  }
+  function closeCard() { $("card").hidden = true; }
+  const el = (html) => { const d = document.createElement("div"); d.innerHTML = html; return d; };
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function portalHref(b) {
+    const to = b.to || {};
+    if (to.row != null) return `/sfere/${grid.addr(to.row, to.col)}${to.room && to.room !== "main" ? "/" + to.room : ""}`;
+    if (to.room) return `/sfere/${addr}/${to.room}`;
+    return null;
+  }
+  function open(b) {
+    switch (b.t) {
+      case "portal": {
+        const href = portalHref(b);
+        const where = b.to && b.to.row != null ? grid.label(b.to.row, b.to.col) + (b.to.room ? " · " + b.to.room : "") : b.to && b.to.room ? "Room · " + b.to.room : "Nowhere yet";
+        return card({ eyebrow: "Portal", title: b.label || where, sub: where, buttons: href ? [btn("Step through", () => go(href))] : [] });
+      }
+      case "guestbook": {
+        const list = document.createElement("div");
+        const gb = space.guestbook || [];
+        list.innerHTML = gb.length ? `<ul class="gb">${gb.map((g) => `<li><span class="sw" style="background:${esc(g.color || "#999")}"></span><b>@${esc(g.handle)}</b> ${esc(g.body)}</li>`).join("")}</ul>` : '<p class="sub">Nobody has signed yet. Be the first.</p>';
+        const buttons = [];
+        if (me && me.profile_complete) {
+          const ta = document.createElement("textarea"); ta.rows = 2; ta.maxLength = 140; ta.placeholder = "Leave a line…";
+          list.append(ta);
+          buttons.push(btn("Sign", async (e) => {
+            const v = ta.value.trim(); if (!v) return;
+            e.currentTarget.disabled = true;
+            try { await api.spaceSign(row, col, v); await reload(); toast("Signed. Thanks for visiting."); open(b); }
+            catch (err) { $("card-err").textContent = err.message; e.currentTarget.disabled = false; }
+          }));
+        }
+        return card({ eyebrow: "Guestbook", title: `${space.title || "@" + space.handle}`, sub: `${gb.length} signature${gb.length === 1 ? "" : "s"}`, body: list, buttons });
+      }
+      case "tipjar": {
+        if (space.is_owner) return card({ eyebrow: "Tip jar", title: "Your tip jar", sub: "Visitors can drop points in here. Tips arrive in your wallet." });
+        if (!me) return card({ eyebrow: "Tip jar", title: `Tip @${space.handle}`, sub: "Sign in to leave a tip.", buttons: [btn("Sign in", null, false, "/points")] });
+        const box = document.createElement("div");
+        const amounts = [5, 25, 100];
+        const row2 = document.createElement("div"); row2.className = "btns";
+        for (const a of amounts) row2.append(btn(`${a} pts`, async (e) => {
+          e.currentTarget.disabled = true;
+          try { await api.spaceTip(row, col, a); toast(`You tipped ${a} points. Nice.`); closeCard(); }
+          catch (err) { $("card-err").textContent = err.message; e.currentTarget.disabled = false; }
+        }, a !== 25));
+        box.append(row2);
+        return card({ eyebrow: "Tip jar", title: `Tip @${space.handle}`, sub: "Points go straight to the owner.", body: box });
+      }
+      case "frame": case "_billboard": {
+        const body = b.url || (b.t === "_billboard" && space.promo_url) ? el(`<img class="full" src="${esc(b.url || space.promo_url)}" alt="">`) : null;
+        return card({ eyebrow: b.t === "frame" ? "Frame" : "Billboard", title: b.title || (b.t === "frame" ? "A picture" : "Promotional Square"), body });
+      }
+      case "sign": return card({ eyebrow: "Neon sign", title: b.text || "Hello" });
+      case "board": case "_wall": {
+        const ps = space.posts || [];
+        const body = el(ps.length ? `<ul class="posts">${ps.map((p) => `<li><a href="/line#p${p.id}">${esc(p.body || "Image post")}</a></li>`).join("")}</ul>` : '<p class="sub">No posts yet.</p>');
+        return card({ eyebrow: b.t === "board" ? "Notice board" : "Posting wall", title: `@${space.handle} on the Līnē`, body, buttons: [btn("Open the Līnē", null, true, "/line")] });
+      }
+      case "_mine": return card({ eyebrow: "Industrial", title: `${space.mines || 1} mine${space.mines === 1 ? "" : "s"}`, sub: `Each pays ${QUBE.MINE_RATE} points a day.`, buttons: space.is_owner ? [btn("Add a mine", null, false, `/hexa#mine-${row}.${col}`)] : [] });
+      case "_field": {
+        const buttons = space.is_owner && space.ripe ? [btn("Harvest 9 tokenberries", async (e) => {
+          e.currentTarget.disabled = true;
+          try { const n = await api.harvest(row, col); await reload(); toast(`+9 tokenberries · you have ${n}`); closeCard(); }
+          catch (err) { $("card-err").textContent = err.message; }
+        })] : [];
+        return card({ eyebrow: "Tokenberry field", title: space.ripe ? "Ripe" : "Growing", sub: space.ripe ? "9 tokenberries are ready." : "Harvested today. Ripe again at midnight UTC.", buttons });
+      }
+      case "_agent": return card({ eyebrow: "Resident", title: space.agent_name, sub: night > 0.6 ? "Asleep. It's night here." : `@${space.handle}'s agent lives here.`, buttons: space.is_owner ? [btn(`Talk to ${space.agent_name}`, null, false, "/cirqle")] : [] });
+      case "light": return card({ eyebrow: "Lamp", title: night > 0.3 ? "On" : "Off until dark", sub: "Lamps light up when night falls here." });
+      case "berrybush": return card({ eyebrow: "Berry bush", title: "Tokenberry bush", sub: "It grows more berries every day it stands." });
+      case "plant": return card({ eyebrow: "Plant", title: { tree: "A tree", flowers: "Flowers", bush: "A bush" }[b.k || "bush"] });
+      default: return null;
+    }
+  }
+  function go(href) {
+    // a little dive before stepping through
+    intro = 0.6;
+    setTimeout(() => { location.href = href; }, reduce ? 0 : 220);
+  }
+
+  // ---------------------------------------------------------------- building
+  function snapshot() { undoStack.push(JSON.stringify(layout.blocks)); if (undoStack.length > 80) undoStack.shift(); }
+  function undo() { const s = undoStack.pop(); if (!s) return; layout.blocks = JSON.parse(s); selectedId = null; changed(); }
+  function removeBlock(b) {
+    if (!b) return;
+    snapshot();
+    layout.blocks = layout.blocks.filter((x) => x !== b);
+    // whatever stood on it falls down a level
+    if (!BLOCKS[b.t]?.floor) for (const x of layout.blocks) if (x.x === b.x && x.y === b.y && (x.z || 0) > (b.z || 0) && !BLOCKS[x.t]?.floor) x.z -= 1;
+    selectedId = null; closeCard(); changed();
+  }
+  function buildClick(x, y, shift) {
+    if (tool === "erase" || shift) {
+      const h = hitAt(x, y);
+      if (h && h.ref && h.ref.id) removeBlock(h.ref);
+      return;
+    }
+    if (tool === "select") {
+      const h = hitAt(x, y);
+      if (h && h.ref && h.ref.id) { selectedId = h.ref.id; editCard(h.ref); } else { selectedId = null; closeCard(); }
+      return;
+    }
+    const c = targetCell(x, y);
+    if (!c) return;
+    if (RESERVED(c.x, c.y)) return toast("That corner belongs to your Square's " + (KINDS[space.kind]?.label || "") + " plot.");
+    const def = BLOCKS[pick];
+    const b = { id: uid(), t: pick, x: c.x, y: c.y };
+    if (def.floor) {
+      const existing = layout.blocks.find((o) => (o.t === "paint" || o.t === "water") && o.x === c.x && o.y === c.y);
+      snapshot();
+      if (existing) layout.blocks = layout.blocks.filter((o) => o !== existing);
+    } else {
+      const z = columnTop(c.x, c.y);
+      if (z > 8) return toast("That stack is as tall as a room can be.");
+      const below = layout.blocks.find((o) => o.x === c.x && o.y === c.y && !BLOCKS[o.t]?.floor && (o.z || 0) === z - 1);
+      if (below && !BLOCKS[below.t].stack) return toast(`Nothing can sit on a ${BLOCKS[below.t].name.toLowerCase()}.`);
+      b.z = z;
+      snapshot();
+    }
+    if (def.colored) b.c = color;
+    if (pick === "shape") b.s = lastShape;
+    if (pick === "plant") b.k = lastPlant;
+    if (pick === "berrybush") b.at = Date.now();
+    if (pick === "sign") b.text = "Hello";
+    if (pick === "frame" || pick === "board") b.d = 0;
+    if (pick === "portal") { b.label = ""; b.to = {}; }
+    layout.blocks.push(b);
+    changed();
+    if (["sign", "frame", "portal"].includes(pick)) { selectedId = b.id; editCard(b); }
+  }
+  let lastShape = "sphere", lastPlant = "bush";
+
+  // the selected block's settings
+  function editCard(b) {
+    const def = BLOCKS[b.t];
+    const body = document.createElement("div");
+    body.style.display = "flex"; body.style.flexDirection = "column"; body.style.gap = "10px";
+    const set = (k, v) => { snapshot(); b[k] = v; changed(); };
+    if (def.colored) {
+      const sw = document.createElement("div"); sw.className = "swatches";
+      for (const c of [space.color, ...PALETTE]) {
+        const s = document.createElement("button"); s.type = "button"; s.style.background = c; s.setAttribute("aria-label", c);
+        s.setAttribute("aria-pressed", String((b.c || "").toLowerCase() === c.toLowerCase()));
+        s.addEventListener("click", () => { set("c", c); editCard(b); });
+        sw.append(s);
+      }
+      body.append(sw);
+    }
+    if (b.t === "shape" || b.t === "plant") {
+      const opts = b.t === "shape" ? SHAPES : PLANTS;
+      const seg = document.createElement("div"); seg.className = "seg";
+      for (const o of opts) {
+        const s = document.createElement("button"); s.type = "button"; s.textContent = o;
+        s.setAttribute("aria-pressed", String((b.t === "shape" ? b.s || "sphere" : b.k || "bush") === o));
+        s.addEventListener("click", () => { if (b.t === "shape") { set("s", o); lastShape = o; } else { set("k", o); lastPlant = o; } editCard(b); });
+        seg.append(s);
+      }
+      body.append(seg);
+    }
+    if (b.t === "sign") {
+      const i = document.createElement("input"); i.type = "text"; i.maxLength = 40; i.value = b.text || ""; i.placeholder = "Up to 40 characters";
+      i.addEventListener("input", () => { b.text = i.value; changed(true); });
+      body.append(i);
+    }
+    if (b.t === "frame" || b.t === "board") {
+      body.append(btn("Turn", () => { set("d", b.d ? 0 : 1); }, true));
+    }
+    if (b.t === "frame") {
+      const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.hidden = true;
+      input.addEventListener("change", async () => {
+        const f = input.files[0]; if (!f) return;
+        $("card-err").textContent = "Uploading…";
+        try { const url = await api.upload(await QUBE.prepareMedia(f)); set("url", url); $("card-err").textContent = ""; }
+        catch (err) { $("card-err").textContent = err.message; }
+      });
+      body.append(input, btn(b.url ? "Change image" : "Choose an image", () => input.click()));
+    }
+    if (b.t === "portal") {
+      const lab = document.createElement("input"); lab.type = "text"; lab.maxLength = 32; lab.value = b.label || ""; lab.placeholder = "Label (optional)";
+      lab.addEventListener("input", () => { b.label = lab.value; changed(true); });
+      const to = document.createElement("input"); to.type = "text"; to.placeholder = "Square, e.g. SQ 3·353·303 (empty: this Square)";
+      to.value = b.to && b.to.row != null ? grid.label(b.to.row, b.to.col) : "";
+      const rm = document.createElement("select"); rm.className = "pick";
+      rm.style.cssText = "padding:9px 10px;border-radius:8px;border:1px solid var(--panel-line);background:transparent;color:var(--panel-ink)";
+      const fillRooms = () => {
+        const here = !to.value.trim();
+        rm.innerHTML = here ? space.rooms.map((r) => `<option value="${esc(r.slug)}">${esc(r.name)}</option>`).join("") : '<option value="">Its entrance</option>';
+        rm.value = (b.to && b.to.room) || (here ? "main" : "");
+      };
+      fillRooms();
+      const apply = () => {
+        const v = to.value.trim(), p = v ? grid.parseAddr(v) : null;
+        if (v && !p) { $("card-err").textContent = "That isn't a Square address."; return; }
+        $("card-err").textContent = "";
+        b.to = p ? { row: p.row, col: p.col, ...(rm.value ? { room: rm.value } : {}) } : { room: rm.value || "main" };
+        changed(true);
+      };
+      to.addEventListener("change", () => { fillRooms(); apply(); });
+      rm.addEventListener("change", apply);
+      body.append(lab, to, rm);
+    }
+    card({
+      eyebrow: `${def.name} · ${def.cost} pt${def.cost === 1 ? "" : "s"}`, title: b.t === "sign" ? (b.text || "Sign") : def.name,
+      sub: `Spot ${b.x + 1}·${b.y + 1}${def.floor ? "" : ` · level ${(b.z || 0) + 1}`}`,
+      body, buttons: [btn("Remove", () => removeBlock(b), true)],
+    });
+  }
+
+  // ---------------------------------------------------------------- saving
+  let saveT, saving = false;
+  function changed(soft) {
+    dirty = true;
+    if (!building) return;
+    $("saved").textContent = "Unsaved";
+    clearTimeout(saveT);
+    saveT = setTimeout(save, soft ? 1400 : 900);
+  }
+  function cleanLayout() {   // drop editor-only fields before saving
+    return { v: 1, blocks: layout.blocks.map(({ id, ...b }) => b) };
+  }
+  async function save() {
+    if (saving) { clearTimeout(saveT); saveT = setTimeout(save, 500); return; }
+    saving = true;
+    const r = room();
+    try {
+      await api.spaceSaveDraft(row, col, r.slug, r.name, cleanLayout());
+      r.draft = cleanLayout();
+      $("saved").textContent = "Draft saved";
+      await refreshCost();
+    } catch (err) { $("saved").textContent = "Not saved"; toast(err.message); }
+    saving = false;
+  }
+  async function refreshCost() {
+    const r = room();
+    const same = JSON.stringify(r.published || null) === JSON.stringify(r.draft || null);
+    let cost = 0;
+    try { cost = Number(await api.spacePublishCost(row, col, r.slug)) || 0; } catch {}
+    const b = $("publish");
+    b.disabled = same; b.classList.remove("sure");
+    b.textContent = same ? "Published" : cost > 0 ? `Publish · ${fmt.format(cost)} pts` : "Publish · free";
+    b.dataset.cost = cost;
+  }
+  let armed = false;
+  $("publish").addEventListener("click", async () => {
+    const b = $("publish"), cost = Number(b.dataset.cost || 0);
+    if (cost > 0 && !armed) { armed = true; b.classList.add("sure"); b.textContent = `Confirm · ${fmt.format(cost)} pts`; setTimeout(() => { if (armed) { armed = false; refreshCost(); } }, 4000); return; }
+    armed = false; b.disabled = true; b.textContent = "Publishing…";
+    clearTimeout(saveT); await save();
+    try {
+      await api.spacePublish(row, col, room().slug);
+      await reload(true);
+      toast(cost > 0 ? `Published. ${fmt.format(cost)} points went to the Central Bank.` : "Published.");
+    } catch (err) { toast(err.message); refreshCost(); }
+  });
+
+  // ---------------------------------------------------------------- the builder UI
+  function thumb(type) {
+    const c = document.createElement("canvas"); c.width = 96; c.height = 88;
+    const save = { W, H, DPR, rot, zoom, pan: { ...pan }, intro, building };
+    return { c, draw() {
+      const g = c.getContext("2d");
+      const real = ctx;
+      try {
+        W = 48; H = 44; DPR = 2; building = false; rot = 0; zoom = 8; pan = { x: 0, y: 8 }; intro = 1;
+        ctxSwap(g);
+        g.clearRect(0, 0, 96, 88); g.setTransform(2, 0, 0, 2, 0, 0);
+        const b = { t: type, x: 4, y: 4, z: 0, c: color || space.color, s: lastShape, k: lastPlant, text: "Hi", at: Date.now() - 3 * 86400000, label: "" };
+        if (type === "paint" || type === "water") {
+          const [X, Y] = turn(4.5, 4.5);
+          const quad = [P(X - 0.5, Y - 0.5, 0), P(X + 0.5, Y - 0.5, 0), P(X + 0.5, Y + 0.5, 0), P(X - 0.5, Y + 0.5, 0)];
+          poly(quad, type === "water" ? "#5bc0ff" : b.c, "rgba(17,18,22,.2)");
+        } else drawBlock(b, performance.now());
+      } finally {
+        ctxSwap(real); W = save.W; H = save.H; DPR = save.DPR; rot = save.rot; zoom = save.zoom; pan = save.pan; intro = save.intro; building = save.building;
+      }
+    } };
+  }
+  const ctxSwap = (g) => { ctx = g; };   // thumbnails borrow the renderer
+  function buildPalette() {
+    const pal = $("palette"); pal.replaceChildren();
+    let cat = null;
+    for (const [type, def] of Object.entries(BLOCKS)) {
+      if (def.cat !== cat) { cat = def.cat; const s = document.createElement("span"); s.className = "cat"; s.textContent = cat; pal.append(s); }
+      const b = document.createElement("button"); b.type = "button"; b.className = "item";
+      b.setAttribute("aria-pressed", String(pick === type && tool === "place"));
+      const th = thumb(type);
+      b.append(th.c);
+      const name = document.createElement("b"); name.textContent = def.name;
+      const cost = document.createElement("small"); cost.textContent = `${def.cost} pt${def.cost === 1 ? "" : "s"}`;
+      b.append(name, cost);
+      b.addEventListener("click", () => { pick = type; setTool("place"); });
+      pal.append(b);
+      th.draw();
+    }
+  }
+  function buildSwatches() {
+    const sw = $("swatches"); sw.replaceChildren();
+    for (const c of [space.color, ...PALETTE.slice(0, 9)]) {
+      const s = document.createElement("button"); s.type = "button"; s.style.background = c; s.setAttribute("aria-label", "Color " + c);
+      s.setAttribute("aria-pressed", String(c === color));
+      s.addEventListener("click", () => { color = c; buildSwatches(); buildPalette(); });
+      sw.append(s);
+    }
+  }
+  function setTool(t) {
+    tool = t;
+    for (const k of ["place", "select", "erase"]) $("tool-" + k).setAttribute("aria-pressed", String(k === t));
+    if (t !== "select") { selectedId = null; }
+    buildPalette();
+  }
+  $("tool-place").addEventListener("click", () => setTool("place"));
+  $("tool-select").addEventListener("click", () => setTool("select"));
+  $("tool-erase").addEventListener("click", () => setTool("erase"));
+  $("undo").addEventListener("click", undo);
+
+  function enterBuild(on) {
+    building = on;
+    document.body.classList.toggle("building", on);
+    $("build").hidden = !on;
+    $("build-btn").hidden = on || !space.is_owner;
+    closeCard(); selectedId = null; hoverCell = null;
+    const r = room();
+    layout = { v: 1, blocks: JSON.parse(JSON.stringify(((on ? r.draft : r.published) || { blocks: [] }).blocks || [])).map((b) => ({ id: uid(), ...b })) };
+    undoStack.length = 0;
+    if (on) {
+      color = color || space.color;
+      $("space-title").value = space.title || "";
+      $("saved").textContent = "Draft";
+      buildSwatches(); buildPalette(); refreshCost();
+    }
+    renderRooms(); showEmpty();
+  }
+  $("build-btn").addEventListener("click", () => enterBuild(true));
+  $("done").addEventListener("click", async () => { clearTimeout(saveT); if ($("saved").textContent === "Unsaved") await save(); enterBuild(false); });
+  $("space-title").addEventListener("change", async () => {
+    try { await api.spaceSetTitle(row, col, $("space-title").value); space.title = $("space-title").value.trim() || null; header(); toast("Named."); } catch (err) { toast(err.message); }
+  });
+
+  // ---------------------------------------------------------------- rooms
+  function renderRooms() {
+    const nav = $("rooms"); nav.replaceChildren();
+    const list = space.rooms.filter((r) => building || space.is_owner || r.published);
+    if (list.length > 1 || building) list.forEach((r) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = r.name + (space.is_owner && !r.published ? " · draft" : "");
+      b.setAttribute("aria-current", String(r === room()));
+      b.addEventListener("click", () => { roomIdx = space.rooms.indexOf(r); history.replaceState(null, "", `/sfere/${addr}${r.slug === "main" ? "" : "/" + r.slug}`); enterBuild(building); });
+      nav.append(b);
+    });
+    if (building) {
+      if (space.rooms.length < 9) {
+        const add = document.createElement("button"); add.type = "button"; add.className = "add"; add.textContent = "+ Room";
+        add.addEventListener("click", async () => {
+          const name = (prompt("Name the new room", "Room " + (space.rooms.length + 1)) || "").trim();
+          if (!name) return;
+          let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "room";
+          while (space.rooms.some((r) => r.slug === slug)) slug = (slug.slice(0, 20) + "-" + Math.floor(Math.random() * 90 + 10));
+          try {
+            await api.spaceSaveDraft(row, col, slug, name, { v: 1, blocks: [] });
+            space.rooms.push({ slug, name, draft: { v: 1, blocks: [] }, published: null });
+            roomIdx = space.rooms.length - 1;
+            enterBuild(true);
+            toast(`${name} added. Publishing a new room costs 50 points.`);
+          } catch (err) { toast(err.message); }
+        });
+        nav.append(add);
+      }
+      if (room() && room().slug !== "main") {
+        const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete room";
+        del.addEventListener("click", async () => {
+          if (!confirm(`Delete ${room().name}? Its blocks are gone for good.`)) return;
+          try { await api.spaceDeleteRoom(row, col, room().slug); await reload(true); roomIdx = 0; enterBuild(true); } catch (err) { toast(err.message); }
+        });
+        nav.append(del);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- loading
+  let me = null;
+  function header() {
+    const kind = space.kind ? KINDS[space.kind].label + " Square" : "Square";
+    $("eyebrow").innerHTML = `<a href="/sfere#${grid.hash(row, col)}">← ${grid.label(row, col)}</a> · ${esc(kind)}`;
+    $("title").textContent = space.title || (space.is_owner ? "Your Space" : `@${space.handle}'s Space`);
+    $("sub").textContent = `${space.is_owner ? "Yours" : "@" + space.handle}${space.agent_name ? " · home of " + space.agent_name : ""} · ${fmt.format(space.visits || 0)} visit${space.visits === 1 ? "" : "s"}`;
+    document.title = `${space.title || grid.label(row, col)} · QÜBE`;
+  }
+  function showEmpty() {
+    const r = room();
+    const empty = !layout.blocks.length && !builtins().length && !space.agent_name;
+    $("empty").hidden = !empty || building;
+    $("empty").textContent = space.is_owner ? (r && !r.published && r.draft && r.draft.blocks.length ? "This room is still a draft. Publish it to open it." : "An empty Space. Tap Build to make it yours.") : `@${space.handle} hasn't built here yet.`;
+  }
+  async function reload(keepRoom) {
+    const v = await api.spaceView(row, col).catch(() => null);
+    if (!v) return false;
+    const slug = keepRoom && room() ? room().slug : null;
+    space = v;
+    if (!space.rooms.length && space.is_owner) space.rooms = [{ slug: "main", name: "Entrance", draft: { v: 1, blocks: [] }, published: null }];
+    if (!space.rooms.length) space.rooms = [{ slug: "main", name: "Entrance", published: { v: 1, blocks: [] } }];
+    const i = space.rooms.findIndex((r) => r.slug === (slug || startRoom));
+    roomIdx = i >= 0 ? i : 0;
+    header();
+    $("build-btn").hidden = !space.is_owner || building;
+    if (!building) {
+      layout = { v: 1, blocks: JSON.parse(JSON.stringify((room().published || { blocks: [] }).blocks || [])).map((b) => ({ id: uid(), ...b })) };
+    }
+    renderRooms(); showEmpty();
+    if (building) refreshCost();
+    return true;
+  }
+
+  // Where a spot on the floor is on screen, for scripts and tests.
+  window.QUBE.spaceAt = (x, y, z = 0) => Pc(x + 0.5, y + 0.5, z);
+
+  (async () => {
+    const signedIn = await api.hasSession().catch(() => false);
+    me = signedIn ? await api.wallet().catch(() => null) : null;
+    const ok = await reload();
+    if (!ok) {
+      $("title").textContent = "Open land";
+      $("sub").textContent = "Nobody owns this Square yet.";
+      $("eyebrow").innerHTML = `<a href="/sfere#${grid.hash(row, col)}">← ${grid.label(row, col)}</a>`;
+      return;
+    }
+    requestAnimationFrame(frame);
+  })();
+})();
+</script>
+</body>
+</html>

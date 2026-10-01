@@ -935,6 +935,7 @@
         body = document.createElement("div");
         body.className = "slots";
       }
+      btns.push(button(isMine ? "Enter your Space" : "Enter Space", null, !isMine && owner.price != null, `/sfere/${grid.addr(row, col)}`));
       if (isMine && owner.kind === "industrial" && mines < 9) btns.push(button("Add a mine", null, false, `/hexa#mine-${row}.${col}`));
       if (isMine && owner.kind === "residential") btns.push(button(owner.agent_name ? `Visit ${owner.agent_name}` : "Wake your agent", null, false, "/cirqle"));
       if (isMine && owner.price == null && !owner.agent_name) btns.push(button("Sell", null, true, `/hexa#sell-${row}.${col}`));
